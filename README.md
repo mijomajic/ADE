@@ -1,133 +1,58 @@
-# T3 Code
+# ADE
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+An agent development environment built on [T3 Code](https://github.com/pingdotgg/t3code), with a focused, Vercel-inspired workspace.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, T3 Code can control them.
+ADE keeps T3 Code's real agent sessions, terminal, Git worktrees, diff review, provider accounts, and remote connections. It adds a workspace overview and a quieter, more readable interface for moving between projects.
 
-## "Wait, what are you selling me?"
+## Run from source
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+Requires Node.js 24 and pnpm 11.10.0 (the version is pinned in `package.json`).
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
-
-## Installation
-
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build, OpenCode, and Antigravity. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
-> - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
-
-### Command line
-
-```bash
-curl -fsSL https://t3.codes/install.sh | sh
+```sh
+git clone https://github.com/mijomajic/ADE.git
+cd ADE
+pnpm install --frozen-lockfile
+pnpm run ade:dev
 ```
 
-On Windows, in PowerShell:
+The startup log prints the local address and a one-time pairing link. Open that link to connect, then add a project and configure an installed provider in **Settings → Providers**. You can use an authenticated Codex, Claude Code, Cursor, Grok Build, OpenCode, or Antigravity installation. ADE does not include a model subscription.
 
-```powershell
-irm https://t3.codes/install.ps1 | iex
+For the Electron development app:
+
+```sh
+pnpm run ade:desktop
 ```
 
-Then run `t3` to start the server and open the local web app. `t3 service install` keeps it running in the background, `t3 update` moves to a newer release, and `t3 --help` has the full reference.
+Both commands keep development state in this checkout's ignored `.ade` directory. Installed ADE uses `~/.ade` and a separate Electron profile; it does not import or overwrite T3 Code's state. Internal package names and `T3CODE_*` configuration variables remain compatible with the upstream architecture. An explicit `T3CODE_HOME` or server `--base-dir` overrides the installed default.
 
-To try it once without installing, run `npx t3@latest` instead.
+## Your workspace
 
-### Desktop app
+- **Overview:** projects, recent threads, live agent work, and requests needing your attention. Click the ADE wordmark or the overview icon to return home.
+- **Find your work:** filter by thread title, project, or branch; narrow to working threads or requests needing attention. Archived threads stay out of the overview.
+- **Start in the right project:** selecting a project in the sidebar also scopes New, its keyboard shortcut, and the command palette. Grouped projects preserve the selected machine when possible.
+- **Safer drafts:** discarding a draft asks first and preserves text, uploads, and context when cancelled.
+- **Readable by default:** locally bundled Geist fonts, neutral light and dark palettes, clearer message surfaces, and account initials that remain legible on custom accent colors.
+- **Honest connection state:** disconnected environments show cached threads as offline instead of counting them as live agent work.
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
+Provider setup and existing workflows are documented in [the user guides](docs/user/install.md). These inherited guides may refer to T3 Code and its releases; use this repository and the source commands above for ADE.
 
-#### Windows (`winget`)
+## Building
 
-```bash
-winget install T3Tools.T3Code
+```sh
+# Web client
+pnpm exec vp run --filter @t3tools/web build
+
+# Desktop application and bundled server
+pnpm run build:desktop
+
+# macOS Apple Silicon artifact
+pnpm run dist:desktop:dmg:arm64
 ```
 
-#### macOS (Homebrew)
+Native distribution builds require the platform's packaging tools. Signing, notarization, and release publishing need your own credentials. ADE's updater targets this fork; it will not install T3 Code releases. Desktop update feeds stay disabled until an ADE feed is explicitly configured. The inherited native mobile app is not packaged or rebranded for ADE; use the responsive web client on mobile.
 
-```bash
-brew install --cask t3-code
-```
+## Upstream and license
 
-#### Debian, Ubuntu (`.deb`)
+ADE is an independent personal fork, not an official T3 Tools or Vercel product. The application is MIT licensed; the [original T3 Tools copyright and license](LICENSE) are retained. Geist and Geist Mono are bundled under the [SIL Open Font License](apps/web/public/fonts/OFL.txt).
 
-Download the `.deb` from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), then:
-
-```bash
-sudo apt install ./T3-Code-*.deb
-```
-
-#### Arch Linux (AUR)
-
-Stable:
-
-```bash
-yay -S t3code-bin
-```
-
-Nightly:
-
-```bash
-yay -S t3code-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
-
-## Documentation
-
-Full docs live in [docs/](./docs). There's no docs site yet.
-
-- [Install and first run](./docs/user/install.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Project settings](./docs/user/project-settings.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- [Run T3 Code as a background service](./docs/user/background-service.md)
-
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
-
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
-
-```bash
-curl -fsSL https://vite.plus | bash
-```
-
-#### Windows
-
-```bash
-irm https://vite.plus/ps1 | iex
-```
-
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
-
-```bash
-vp i
-```
-
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
-
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
-
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+The improvements draw on public reports about [project-scoped creation](https://github.com/pingdotgg/t3code/issues/11895), [accidental draft deletion](https://github.com/pingdotgg/t3code/issues/12735), [provider badge contrast](https://github.com/pingdotgg/t3code/issues/11641), and [message separation](https://github.com/pingdotgg/t3code/discussions/8921). These are focused changes to this fork, not a claim that every upstream request is resolved.

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   BRAND_ASSET_PATHS,
+  ADE_BRAND_ASSET_PATHS,
   DEVELOPMENT_ICON_OVERRIDES,
   DEVELOPMENT_PUBLIC_ICON_OVERRIDES,
   resolveWebAssetBrandForChannel,
@@ -13,27 +14,27 @@ describe("brand-assets", () => {
   it("maps production web assets into the server package", () => {
     expect(resolveWebIconOverrides("production", "dist/client")).toEqual([
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFaviconIco,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.faviconIco,
         targetRelativePath: "dist/client/favicon.ico",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFavicon16Png,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.favicon16Png,
         targetRelativePath: "dist/client/favicon-16x16.png",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFavicon32Png,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.favicon32Png,
         targetRelativePath: "dist/client/favicon-32x32.png",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.appleTouchIconPng,
         targetRelativePath: "dist/client/apple-touch-icon.png",
       },
     ]);
   });
 
-  it("maps server build web assets to development icons", () => {
+  it("maps server build web assets to ADE icons", () => {
     expect(DEVELOPMENT_ICON_OVERRIDES[0]).toEqual({
-      sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconIco,
+      sourceRelativePath: ADE_BRAND_ASSET_PATHS.faviconIco,
       targetRelativePath: "dist/client/favicon.ico",
     });
   });
@@ -41,19 +42,19 @@ describe("brand-assets", () => {
   it("maps development web assets to the public splash and favicon files", () => {
     expect(DEVELOPMENT_PUBLIC_ICON_OVERRIDES).toEqual([
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconIco,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.faviconIco,
         targetRelativePath: "apps/web/public/favicon.ico",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFavicon16Png,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.favicon16Png,
         targetRelativePath: "apps/web/public/favicon-16x16.png",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFavicon32Png,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.favicon32Png,
         targetRelativePath: "apps/web/public/favicon-32x32.png",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebAppleTouchIconPng,
+        sourceRelativePath: ADE_BRAND_ASSET_PATHS.appleTouchIconPng,
         targetRelativePath: "apps/web/public/apple-touch-icon.png",
       },
     ]);
@@ -61,14 +62,14 @@ describe("brand-assets", () => {
 
   it("can target hosted web dist directly", () => {
     expect(resolveWebIconOverrides("production", "apps/web/dist")).toContainEqual({
-      sourceRelativePath: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
+      sourceRelativePath: ADE_BRAND_ASSET_PATHS.appleTouchIconPng,
       targetRelativePath: "apps/web/dist/apple-touch-icon.png",
     });
   });
 
-  it("maps hosted nightly web assets to nightly icons", () => {
+  it("maps hosted nightly web assets to ADE icons", () => {
     expect(resolveWebIconOverrides("nightly", "apps/web/dist")).toContainEqual({
-      sourceRelativePath: BRAND_ASSET_PATHS.nightlyWebFaviconIco,
+      sourceRelativePath: ADE_BRAND_ASSET_PATHS.faviconIco,
       targetRelativePath: "apps/web/dist/favicon.ico",
     });
   });

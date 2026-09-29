@@ -31,6 +31,16 @@ export const BRAND_ASSET_PATHS = {
   developmentWebAppleTouchIconPng: "assets/dev/blueprint-web-apple-touch-180.png",
 } as const;
 
+// ADE's desktop/web artwork is independent from the retained upstream mobile assets.
+export const ADE_BRAND_ASSET_PATHS = {
+  iconPng: "assets/ade/icon.png",
+  iconIco: "assets/ade/icon.ico",
+  faviconIco: "assets/ade/favicon.ico",
+  favicon16Png: "assets/ade/favicon-16x16.png",
+  favicon32Png: "assets/ade/favicon-32x32.png",
+  appleTouchIconPng: "assets/ade/apple-touch-icon.png",
+} as const;
+
 export type WebAssetBrand = "development" | "nightly" | "production";
 
 export const WEB_ASSET_CHANNELS = ["latest", "nightly"] as const;
@@ -57,32 +67,11 @@ const WEB_ICON_TARGET_FILENAMES = {
   appleTouchIconPng: "apple-touch-icon.png",
 } as const;
 
-const WEB_ICON_SOURCE_PATHS_BY_BRAND = {
-  development: {
-    faviconIco: BRAND_ASSET_PATHS.developmentWebFaviconIco,
-    favicon16Png: BRAND_ASSET_PATHS.developmentWebFavicon16Png,
-    favicon32Png: BRAND_ASSET_PATHS.developmentWebFavicon32Png,
-    appleTouchIconPng: BRAND_ASSET_PATHS.developmentWebAppleTouchIconPng,
-  },
-  nightly: {
-    faviconIco: BRAND_ASSET_PATHS.nightlyWebFaviconIco,
-    favicon16Png: BRAND_ASSET_PATHS.nightlyWebFavicon16Png,
-    favicon32Png: BRAND_ASSET_PATHS.nightlyWebFavicon32Png,
-    appleTouchIconPng: BRAND_ASSET_PATHS.nightlyWebAppleTouchIconPng,
-  },
-  production: {
-    faviconIco: BRAND_ASSET_PATHS.productionWebFaviconIco,
-    favicon16Png: BRAND_ASSET_PATHS.productionWebFavicon16Png,
-    favicon32Png: BRAND_ASSET_PATHS.productionWebFavicon32Png,
-    appleTouchIconPng: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
-  },
-} as const satisfies Record<WebAssetBrand, Record<keyof typeof WEB_ICON_TARGET_FILENAMES, string>>;
-
 export function resolveWebIconOverrides(
-  brand: WebAssetBrand,
+  _brand: WebAssetBrand,
   targetDirectory: string,
 ): ReadonlyArray<IconOverride> {
-  const sourcePaths = WEB_ICON_SOURCE_PATHS_BY_BRAND[brand];
+  const sourcePaths = ADE_BRAND_ASSET_PATHS;
   return [
     {
       sourceRelativePath: sourcePaths.faviconIco,

@@ -1,0 +1,3 @@
+Unmodified variable fonts from https://github.com/vercel/geist-font
+Commit: 10dc7658f13c38a474cde201bb09a4617267545b
+License: OFL.txt (SIL Open Font License 1.1)

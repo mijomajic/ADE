@@ -688,15 +688,14 @@ export function isSidebarNestedLinkClick(target: EventTarget | null): boolean {
   return nodeClosest(parent, "a[href]") !== null;
 }
 
-// Shift+click on the new thread button creates directly in the current
-// project, skipping the command palette's project picker. With a single
-// project there is nothing to pick, so a plain click already creates
-// immediately and the modifier changes nothing.
+// A scoped project or a single-project catalog leaves nothing to pick.
+// Shift+click also skips the picker when viewing all projects.
 export function shouldCreateNewThreadInCurrentProject(
   shiftKey: boolean,
   projectGroupCount: number,
+  hasProjectScope = false,
 ): boolean {
-  return shiftKey || projectGroupCount <= 1;
+  return hasProjectScope || shiftKey || projectGroupCount <= 1;
 }
 
 export function orderItemsByPreferredIds<TItem, TId>(input: {

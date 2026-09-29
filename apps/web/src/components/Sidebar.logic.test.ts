@@ -592,6 +592,11 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 2)).toBe(false);
   });
 
+  it("creates directly within the visible project scope for clicks and shortcuts", () => {
+    expect(shouldCreateNewThreadInCurrentProject(false, 3, true)).toBe(true);
+    expect(shouldCreateNewThreadInCurrentProject(true, 3, true)).toBe(true);
+  });
+
   it("creates directly on any click with a single project", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 1)).toBe(true);

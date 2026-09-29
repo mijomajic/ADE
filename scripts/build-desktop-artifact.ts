@@ -24,7 +24,7 @@ import serverPackageJson from "../apps/server/package.json" with { type: "json" 
 
 import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
 import {
-  BRAND_ASSET_PATHS,
+  ADE_BRAND_ASSET_PATHS,
   resolveWebAssetBrandForChannel,
   type WebAssetBrand,
 } from "./lib/brand-assets.ts";
@@ -54,7 +54,8 @@ import { Command, Flag } from "effect/unstable/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
-const DESKTOP_APP_ID = "com.t3tools.t3code";
+const DESKTOP_APP_ID = "com.mijomajic.ade";
+const DESKTOP_UPDATE_REPOSITORY = "mijomajic/ADE";
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
 
 const BuildPlatform = Schema.Literals(["mac", "linux", "win"]);
@@ -2547,7 +2548,9 @@ export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig"
     Option.getOrUndefined(env.githubRepository)?.trim() ||
     ""
   ).trim();
-  if (!rawRepo) return undefined;
+  // A fork must never install upstream's binaries through an inherited CI feed.
+  // Local builds stay manual until an ADE release repository is explicitly configured.
+  if (rawRepo.toLowerCase() !== DESKTOP_UPDATE_REPOSITORY.toLowerCase()) return undefined;
 
   const [owner, repo, ...rest] = rawRepo.split("/");
   if (!owner || !repo || rest.length > 0) return undefined;
@@ -2580,19 +2583,11 @@ export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
   return resolveWebAssetBrandForChannel(resolveDesktopUpdateChannel(version));
 }
 
-export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIconAssets {
-  if (resolveDesktopUpdateChannel(version) === "nightly") {
-    return {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
-    };
-  }
-
+export function resolveDesktopBuildIconAssets(_version: string): DesktopBuildIconAssets {
   return {
-    macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-    linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-    windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
+    macIconPng: ADE_BRAND_ASSET_PATHS.iconPng,
+    linuxIconPng: ADE_BRAND_ASSET_PATHS.iconPng,
+    windowsIconIco: ADE_BRAND_ASSET_PATHS.iconIco,
   };
 }
 
@@ -2615,8 +2610,8 @@ export function resolvePackageManagerUserAgent(packageManager: string): string {
 
 export function resolveDesktopProductName(version: string): string {
   return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code (Nightly)"
-    : (desktopPackageJson.productName ?? "T3 Code");
+    ? "ADE (Nightly)"
+    : (desktopPackageJson.productName ?? "ADE");
 }
 
 export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
@@ -2641,7 +2636,10 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
-    artifactName: "T3-Code-${version}-${arch}.${ext}",
+    artifactName: "ADE-${version}-${arch}.${ext}",
+    // Missing/empty publish config lets electron-builder infer a GitHub feed.
+    // Null explicitly disables that fallback for manual and preview builds.
+    publish: null,
     electronLanguages: [...DESKTOP_ELECTRON_LANGUAGES],
     files: [
       ...DESKTOP_FILE_EXCLUSIONS,
@@ -2692,12 +2690,12 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       category: "public.app-category.developer-tools",
       extendInfo: {
         NSScreenCaptureUsageDescription:
-          "T3 Code captures the active window when you use the window capture shortcut.",
+          "ADE captures the active window when you use the window capture shortcut.",
       },
       protocols: [
         {
-          name: "T3 Code",
-          schemes: ["t3code", "t3code-dev"],
+          name: "ADE",
+          schemes: ["ade", "ade-dev"],
         },
       ],
       ...(signed ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") } : {}),
@@ -2739,24 +2737,24 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       // resources/package-type into the .deb only, so electron-updater updates
       // each install in its own format.
       target: target === "AppImage" ? [target, "deb"] : [target],
-      executableName: "t3code",
+      executableName: "ade",
       icon: "icons",
       category: "Development",
       synopsis: "Desktop GUI for coding agents",
       // Required by the .deb control file.
-      maintainer: "T3 Tools <hello@t3.codes>",
+      maintainer: "Mijo Majic <mijomajic@users.noreply.github.com>",
       // electron-builder turns these into MimeType=x-scheme-handler/<scheme>;
       // in the .desktop entry (Exec already gets %U), so browsers can hand
-      // t3code:// OAuth callbacks to the app.
+      // ade:// OAuth callbacks to the app.
       protocols: [
         {
-          name: "T3 Code",
-          schemes: ["t3code", "t3code-dev"],
+          name: "ADE",
+          schemes: ["ade", "ade-dev"],
         },
       ],
       desktop: {
         entry: {
-          StartupWMClass: "t3code",
+          StartupWMClass: "ade",
         },
       },
     };
@@ -3663,16 +3661,16 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       ? path.join(stageAppDir, WINDOWS_SERVER_RESOURCE_SOURCE_DIR, WINDOWS_SERVER_ASAR_RESOURCE)
       : undefined;
   const stagePackageJson: StagePackageJson = {
-    name: "t3code",
+    name: "ade",
     version: appVersion,
     buildVersion: appVersion,
     t3codeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
-    description: "T3 Code desktop build",
+    description: "ADE desktop build, based on T3 Code",
     // Required by the .deb control file.
-    homepage: "https://t3.codes",
-    author: "T3 Tools",
+    homepage: "https://github.com/mijomajic/ADE",
+    author: "Mijo Majic",
     main: "apps/desktop/dist-electron/boot.cjs",
     build: yield* createBuildConfig(
       options.platform,

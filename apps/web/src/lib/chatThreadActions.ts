@@ -6,6 +6,10 @@ import type {
   ScopedProjectRef,
 } from "@t3tools/contracts";
 import type { ComposerThreadDraftState, DraftThreadEnvMode } from "../composerDraftStore";
+import {
+  buildSidebarProjectPickerEntries,
+  type SidebarProjectSnapshot,
+} from "../sidebarProjectGrouping";
 
 type ComposerModelSelectionState = Pick<
   ComposerThreadDraftState,
@@ -32,8 +36,9 @@ interface NewThreadHandler {
 
 export interface ChatThreadActionContext {
   readonly activeDraftThread: ThreadContextLike | null;
-  readonly activeThread: ThreadContextLike | undefined;
+  readonly activeThread: ThreadContextLike | null | undefined;
   readonly defaultProjectRef: ScopedProjectRef | null;
+  readonly scopedProjectRef?: ScopedProjectRef | null;
   readonly handleNewThread: NewThreadHandler;
 }
 
@@ -71,6 +76,9 @@ export function hasExplicitComposerModelSelection(
 export function resolveThreadActionProjectRef(
   context: ChatThreadActionContext,
 ): ScopedProjectRef | null {
+  if (context.scopedProjectRef) {
+    return context.scopedProjectRef;
+  }
   if (context.activeThread) {
     return scopeProjectRef(context.activeThread.environmentId, context.activeThread.projectId);
   }
@@ -81,6 +89,20 @@ export function resolveThreadActionProjectRef(
     );
   }
   return context.defaultProjectRef;
+}
+
+/** Keep creation inside the visible project, retaining the active machine
+ * when that project has checkouts in multiple environments. */
+export function resolveScopedNewThreadProjectRef(
+  group: SidebarProjectSnapshot | null | undefined,
+  preferredProjectRef: ScopedProjectRef | null,
+): ScopedProjectRef | null {
+  if (!group) return null;
+  const entry = buildSidebarProjectPickerEntries({
+    groups: [group],
+    preferredProjectRef,
+  })[0];
+  return entry ? scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id) : null;
 }
 
 // New threads inherit only the *project* from the current context. Branch,

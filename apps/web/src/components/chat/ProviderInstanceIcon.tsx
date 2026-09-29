@@ -1,6 +1,10 @@
 import { type CSSProperties, memo } from "react";
 import { type ProviderDriverKind } from "@t3tools/contracts";
-import { providerInstanceInitials } from "@t3tools/client-runtime/state/provider-instance-display";
+import {
+  normalizeProviderAccentColor,
+  providerInstanceBadgeForeground,
+  providerInstanceInitials,
+} from "@t3tools/client-runtime/state/provider-instance-display";
 
 import { PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
 import { cn } from "~/lib/utils";
@@ -21,8 +25,9 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
 }) {
   const Icon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
   const indicatorBackground = props.indicatorBackground ?? "var(--card)";
-  const accentStyle = props.accentColor
-    ? ({ "--provider-accent": props.accentColor } as CSSProperties)
+  const accentColor = normalizeProviderAccentColor(props.accentColor);
+  const accentStyle = accentColor
+    ? ({ "--provider-accent": accentColor } as CSSProperties)
     : undefined;
   const badgeContent = props.badgeContent ?? "initials";
 
@@ -33,7 +38,7 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
         props.className,
       )}
       style={accentStyle}
-      data-provider-accent-color={props.accentColor}
+      data-provider-accent-color={accentColor}
     >
       {Icon ? (
         <Icon className={cn("size-5 shrink-0", props.iconClassName)} aria-hidden />
@@ -56,12 +61,13 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
         <span
           className={cn(
             "pointer-events-none absolute right-0 bottom-0 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border px-0.5 text-4xs font-semibold leading-none shadow-sm",
-            props.accentColor
-              ? "bg-(--provider-accent) text-white"
-              : "bg-card text-muted-foreground",
+            accentColor ? "bg-(--provider-accent)" : "bg-card text-muted-foreground",
             props.badgeClassName,
           )}
-          style={{ borderColor: indicatorBackground }}
+          style={{
+            borderColor: indicatorBackground,
+            color: providerInstanceBadgeForeground(accentColor),
+          }}
           aria-hidden
         >
           {badgeContent === "initials" ? providerInstanceInitials(props.displayName) : null}

@@ -1,7 +1,28 @@
 import * as NodeOS from "node:os";
-import { assert, it } from "vite-plus/test";
+import * as NodePath from "node:path";
+import * as NodePathService from "@effect/platform-node/NodePath";
+import { assert, it } from "@effect/vitest";
+import * as Effect from "effect/Effect";
 
-import { hydratePosixHome } from "./os-jank.ts";
+import { hydratePosixHome, resolveBaseDir } from "./os-jank.ts";
+
+it.effect("keeps ADE's default state separate from T3 Code", () =>
+  Effect.gen(function* () {
+    for (const input of [undefined, "", "  "]) {
+      const resolved = yield* resolveBaseDir(input).pipe(Effect.provide(NodePathService.layer));
+      assert.equal(resolved, NodePath.join(NodeOS.homedir(), ".ade"));
+    }
+  }),
+);
+
+it.effect("preserves an explicit server data directory", () =>
+  Effect.gen(function* () {
+    const resolved = yield* resolveBaseDir(" /custom/ade ").pipe(
+      Effect.provide(NodePathService.layerPosix),
+    );
+    assert.equal(resolved, "/custom/ade");
+  }),
+);
 
 it("hydrates HOME for minimal service environments from the user account", () => {
   const env: NodeJS.ProcessEnv = {};

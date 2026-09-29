@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   normalizeProviderAccentColor,
+  providerInstanceBadgeForeground,
   providerInstanceInitials,
   resolveProviderInstanceDisplayName,
   shouldShowInstanceBadge,
@@ -39,6 +40,53 @@ describe("resolveProviderInstanceDisplayName", () => {
         driver: codex,
       }),
     ).toBe("Codex");
+  });
+});
+
+describe("providerInstanceBadgeForeground", () => {
+  it.each([
+    ["#ffffff", "#000000"],
+    ["#000000", "#ffffff"],
+    ["#facc15", "#000000"],
+    ["#ff8800", "#000000"],
+    ["#22c55e", "#000000"],
+    ["#ff0000", "#000000"],
+    ["#dc2626", "#ffffff"],
+    ["#2563eb", "#ffffff"],
+    ["#757575", "#ffffff"],
+    ["#767676", "#000000"],
+    ["  #FACC15  ", "#000000"],
+  ])("uses readable initials on %s", (accent, foreground) => {
+    expect(providerInstanceBadgeForeground(accent)).toBe(foreground);
+  });
+
+  it.each([undefined, "", "   ", "blue", "#fff", "#ffff", "#ffffff80", "#gggggg"])(
+    "preserves the themed foreground for an unset or unsupported accent: %s",
+    (accent) => {
+      expect(providerInstanceBadgeForeground(accent)).toBeUndefined();
+    },
+  );
+
+  it("meets normal-text contrast across the supported RGB color range", () => {
+    // Sample each channel across its full range, including both endpoints.
+    // This checks the accessibility outcome, not a particular cutoff color.
+    for (let red = 0; red <= 255; red += 17) {
+      for (let green = 0; green <= 255; green += 17) {
+        for (let blue = 0; blue <= 255; blue += 17) {
+          const channels = [red, green, blue];
+          const color = `#${channels.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+          const linear = channels.map((value) => {
+            const channel = value / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+          const luminance = linear[0]! * 0.2126 + linear[1]! * 0.7152 + linear[2]! * 0.0722;
+          const foreground = providerInstanceBadgeForeground(color);
+          const contrast =
+            foreground === "#000000" ? (luminance + 0.05) / 0.05 : 1.05 / (luminance + 0.05);
+          expect(contrast, color).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
   });
 });
 

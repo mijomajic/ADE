@@ -11,6 +11,20 @@ import {
   resolveTimestampLocale,
 } from "./timestampFormat";
 
+describe("relative timestamps with a shared UI clock", () => {
+  it("updates labels when the supplied minute advances without changing the timestamp", () => {
+    const timestamp = "2026-09-29T12:00:00.000Z";
+    expect(formatRelativeTimeLabel(timestamp, Date.parse(timestamp))).toBe("just now");
+    expect(formatRelativeTimeLabel(timestamp, Date.parse("2026-09-29T12:02:00.000Z"))).toBe(
+      "2m ago",
+    );
+    expect(formatRelativeTime(timestamp, Date.parse("2026-09-29T13:00:00.000Z"))).toEqual({
+      value: "1h",
+      suffix: "ago",
+    });
+  });
+});
+
 describe("resolveTimestampLocale", () => {
   it("defers to the runtime default when the host reports no locale", () => {
     expect(resolveTimestampLocale(null)).toBeUndefined();

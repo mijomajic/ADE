@@ -198,7 +198,7 @@ describe("mobile themes", () => {
   );
 
   it.each(["light", "dark"] as const)(
-    "slightly strengthens default %s messages and separates fallback materials",
+    "preserves shared %s message separation and readable fallback materials",
     (appearance) => {
       const variables = getMobileThemeVariables("t3-code", appearance);
       const desktop =
@@ -207,8 +207,11 @@ describe("mobile themes", () => {
         variables["--color-user-bubble"],
         variables["--color-screen"],
       );
-      expect(bubbleContrast).toBeGreaterThan(contrastRatio(desktop.messageSurface, desktop.canvas));
-      expect(bubbleContrast).toBeLessThan(1.2);
+      expect(bubbleContrast).toBeGreaterThanOrEqual(
+        contrastRatio(desktop.messageSurface, desktop.canvas),
+      );
+      expect(bubbleContrast).toBeGreaterThanOrEqual(1.1);
+      expect(variables["--color-user-bubble"]).toBe(desktop.messageSurface);
       for (const role of ["--color-composer-surface", "--color-glass-fallback"] as const) {
         const surface = flattenThemeColor(variables[role], variables["--color-screen"]);
         expect(contrastRatio(surface, variables["--color-screen"])).toBeGreaterThanOrEqual(1.06);
@@ -223,11 +226,16 @@ describe("mobile themes", () => {
     },
   );
 
-  it("uses the same preview roles and standard artwork as desktop", () => {
+  it("previews ADE's neutral stock palette and the same named palettes as desktop", () => {
     expect(getMobileThemePreviewColors(DEFAULT_MOBILE_THEME_ID, "light")).toEqual({
       canvas: "#fcfcfc",
-      accent: "#f4f4f5",
-      messageAction: "#4f46e5",
+      accent: "#ededed",
+      messageAction: "#171717",
+    });
+    expect(getMobileThemePreviewColors(DEFAULT_MOBILE_THEME_ID, "dark")).toEqual({
+      canvas: "#0a0a0a",
+      accent: "#202020",
+      messageAction: "#ededed",
     });
     const desktopOcean = BUILT_IN_THEMES.find((theme) => theme.id === "ocean")!;
     expect(getMobileThemePreviewColors("ocean", "light")).toEqual({

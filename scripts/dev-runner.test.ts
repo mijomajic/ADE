@@ -20,6 +20,7 @@ import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import {
+  DEFAULT_T3_HOME,
   checkPortAvailabilityOnHosts,
   createDevRunnerEnv,
   devPortProbeHosts,
@@ -74,6 +75,12 @@ const devServerInput = {
 } as const;
 
 it.layer(NodeServices.layer)("dev-runner", (it) => {
+  it.effect("defaults to ADE's isolated state directory", () =>
+    Effect.gen(function* () {
+      assert.equal(yield* DEFAULT_T3_HOME, NodePath.join(NodeOS.homedir(), ".ade"));
+    }),
+  );
+
   it.effect("accepts a dry run without the optional browser flag", () =>
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;

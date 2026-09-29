@@ -82,9 +82,9 @@ describe("generate mobile Uniwind themes", () => {
         name,
       ).toEqual({
         "--color-clerk-page": isDark ? "#0a0a0a" : "#fcfcfc",
-        "--color-clerk-foreground": isDark ? "#f5f5f5" : "#27272a",
-        "--color-clerk-foreground-muted": isDark ? "#818181" : "#71717b",
-        "--color-clerk-border": isDark ? "#191919" : "#e4e4e7",
+        "--color-clerk-foreground": isDark ? "#ededed" : "#171717",
+        "--color-clerk-foreground-muted": isDark ? "#a1a1a1" : "#666666",
+        "--color-clerk-border": isDark ? "#2a2a2a" : "#e5e5e5",
         "--color-clerk-danger": isDark ? "#ff6467" : "#c10007",
       });
     }

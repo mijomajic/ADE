@@ -330,7 +330,12 @@ export function createMobileThemeVariables(
     "--color-user-bubble": c.messageSurface,
     "--color-user-bubble-foreground": c.messageForeground,
     "--color-user-bubble-foreground-muted": withAlpha(c.messageForeground, 0.78),
-    "--color-user-bubble-skill-foreground": readableTextColor(c.messageAction, c.messageSurface),
+    // A neutral action palette can match body text; references still need a
+    // distinct tint so skills remain recognizable inside a sent message.
+    "--color-user-bubble-skill-foreground": readableTextColor(
+      c.messageAction === c.messageForeground ? c.updateForeground : c.messageAction,
+      c.messageSurface,
+    ),
     "--color-backdrop": withAlpha("#000000", appearance === "dark" ? 0.48 : 0.22),
     "--color-drawer": c.sidebar,
     "--color-drawer-foreground": c.sidebarForeground,
@@ -375,20 +380,9 @@ export function getMobileThemeVariables(
         ? colors.toolbarControlHover
         : colors.sidebarRowActive
       : colors.surface;
-  const mobileColors =
-    themeId === DEFAULT_MOBILE_THEME_ID
-      ? {
-          ...colors,
-          messageSurface: flattenThemeColor(
-            themeColorWithAlpha(
-              appearance === "dark" ? colors.sidebarRowActive : colors.border,
-              0.3,
-            ),
-            colors.messageSurface,
-          ),
-        }
-      : colors;
-  const baseVariables = createMobileThemeVariables(mobileColors, appearance, groupedCard);
+  // The shared stock palette already separates messages from the canvas. A
+  // second mobile tint would make the same conversation heavier on a phone.
+  const baseVariables = createMobileThemeVariables(colors, appearance, groupedCard);
 
   // The complete base record guarantees that optional overrides cannot leave a token undefined.
   return overrides ? ({ ...baseVariables, ...overrides } as MobileThemeVariables) : baseVariables;

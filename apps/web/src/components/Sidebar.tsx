@@ -105,7 +105,7 @@ import { isModelPickerOpen } from "../modelPickerVisibility";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { isMacPlatform } from "~/lib/utils";
 import { useOpenPrLink } from "../lib/openPullRequestLink";
-import { releaseComposerDraftUploads } from "../lib/composerDraftUploads";
+import { discardComposerDraft } from "../lib/discardComposerDraft";
 import { readLocalApi } from "../localApi";
 import {
   isSameSidebarThreadRef,
@@ -125,7 +125,11 @@ import {
 import { useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { isCommandPaletteOpen, openCommandPalette } from "../commandPaletteBus";
-import { startNewThreadFromContext } from "../lib/chatThreadActions";
+import {
+  resolveScopedNewThreadProjectRef,
+  resolveThreadActionProjectRef,
+  startNewThreadFromContext,
+} from "../lib/chatThreadActions";
 import { useClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -828,7 +832,6 @@ const SidebarDraftBlock = memo(function SidebarDraftBlock(props: {
 }) {
   const draftThreadsByThreadKey = useComposerDraftStore((store) => store.draftThreadsByThreadKey);
   const draftsByThreadKey = useComposerDraftStore((store) => store.draftsByThreadKey);
-  const clearDraftThread = useComposerDraftStore((store) => store.clearDraftThread);
   // The open draft's row is FROZEN at the moment the draft became the route:
   // it stays visible (like a thread row) but never repaints while the user
   // types. A draft that was never navigated away from has no snapshot to
@@ -892,16 +895,10 @@ const SidebarDraftBlock = memo(function SidebarDraftBlock(props: {
     props.routeDraftId,
     props.scopedProjectKeys,
   ]);
-  const handleDiscard = useCallback(
-    (draftId: DraftId) => {
-      // The /draft/$draftId route redirects home on its own when the draft
-      // it renders disappears, so discarding the open draft needs no
-      // special-casing here.
-      releaseComposerDraftUploads(draftId);
-      clearDraftThread(draftId);
-    },
-    [clearDraftThread],
-  );
+  const handleDiscard = useCallback((draftId: DraftId) => {
+    // The draft route redirects home when its session is discarded.
+    void discardComposerDraft(draftId, { discardSession: true });
+  }, []);
   if (drafts.length === 0) {
     return null;
   }
@@ -1070,15 +1067,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // Unsent composer text on this thread. The open thread shows its own
   // composer, so the marker only decorates rows you have navigated away from.
   const hasUnsentDraft = useThreadHasUnsentDraft(threadRef) && !props.isActive;
-  const clearComposerContent = useComposerDraftStore((store) => store.clearComposerContent);
   const handleDiscardDraftClick = useCallback(
     (event: ReactMouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      releaseComposerDraftUploads(threadRef);
-      clearComposerContent(threadRef);
+      void discardComposerDraft(threadRef);
     },
-    [clearComposerContent, threadRef],
+    [threadRef],
   );
 
   const gitCwd = thread.worktreePath ?? props.project?.workspaceRoot ?? null;
@@ -4400,21 +4395,27 @@ export default function Sidebar() {
     updateThreadJumpHintsVisibility(shouldShowJumpHintsNow);
   }, [shouldShowJumpHintsNow, updateThreadJumpHintsVisibility]);
 
-  // New thread defaults to the project you're in (active thread's project,
-  // falling back to the top project) — same resolution the command palette
-  // uses. The command palette already offers a "New thread in..." submenu
-  // for multi-project setups.
+  const scopedNewThreadProjectRef = resolveScopedNewThreadProjectRef(
+    scopedProjectGroup,
+    resolveThreadActionProjectRef(newThreadContext),
+  );
+  // A visible project scope owns creation, even when the open thread is
+  // from another project. All projects retains the existing picker.
   const handleNewThreadClick = useCallback(
     (event?: ReactMouseEvent) => {
-      // One project: nothing to pick, create immediately. Shift+click creates
-      // directly in the current project even with several projects, skipping
-      // the palette picker.
-      if (shouldCreateNewThreadInCurrentProject(event?.shiftKey ?? false, projectGroups.length)) {
+      if (
+        shouldCreateNewThreadInCurrentProject(
+          event?.shiftKey ?? false,
+          projectGroups.length,
+          scopedNewThreadProjectRef !== null,
+        )
+      ) {
         if (isMobile) setOpenMobile(false);
         void startNewThreadFromContext({
           activeDraftThread: newThreadContext.activeDraftThread,
           activeThread: newThreadContext.activeThread ?? undefined,
           defaultProjectRef: newThreadContext.defaultProjectRef,
+          scopedProjectRef: scopedNewThreadProjectRef,
           handleNewThread: newThreadContext.handleNewThread,
         });
         return;
@@ -4422,20 +4423,17 @@ export default function Sidebar() {
       if (isMobile) setOpenMobile(false);
       openCommandPalette({ open: "new-thread-in" });
     },
-    [isMobile, newThreadContext, projectGroups.length, setOpenMobile],
+    [isMobile, newThreadContext, projectGroups.length, scopedNewThreadProjectRef, setOpenMobile],
   );
 
-  // The button mirrors chat.new: in multi-project setups both route through
-  // the command palette's "New thread in..." picker, and in single-project
-  // setups both create immediately. In multi-project setups the label is only
-  // the picker's shortcut: falling back to chat.newLocal would advertise the
-  // same shortcut for both the picker and direct create. In single-project
-  // setups both commands create directly, so chat.newLocal is a valid
-  // fallback. The second tooltip line (multi-project only) advertises
-  // shift+click and its keyboard twin chat.newLocal for direct create.
+  // Match chat.new. A scope or single project makes chat.newLocal a valid
+  // fallback shortcut; All projects keeps the picker and advertises the
+  // shift+click shortcut for direct creation separately.
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
-    (projectGroups.length <= 1 ? shortcutLabelForCommand(keybindings, "chat.newLocal") : undefined);
+    (projectGroups.length <= 1 || scopedNewThreadProjectRef !== null
+      ? shortcutLabelForCommand(keybindings, "chat.newLocal")
+      : undefined);
   const newThreadInProjectShortcutLabel = shortcutLabelForCommand(keybindings, "chat.newLocal");
   return (
     <>
@@ -4586,7 +4584,7 @@ export default function Sidebar() {
               newThreadDisabled={projects.length === 0}
               newThreadShortcutLabel={newThreadShortcutLabel}
               newThreadInProjectShortcutLabel={newThreadInProjectShortcutLabel}
-              showNewThreadInProjectHint={projectGroups.length > 1}
+              showNewThreadInProjectHint={projectGroups.length > 1 && scopedProjectGroup === null}
               searchInputRef={threadSearchInputRef}
               searchQuery={threadSearchQuery}
               onSearchQueryChange={(value) => {

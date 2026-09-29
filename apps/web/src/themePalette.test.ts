@@ -93,13 +93,13 @@ describe("theme files", () => {
   it("keeps stock dark controls in the neutral-black surface hierarchy", () => {
     expectThemeColors(getStandardThemeColors("dark"), {
       canvas: "#0a0a0a",
-      surface: "#111111",
-      surfaceRaised: "#111111",
-      surfaceOverlay: "#111111",
-      toolbarControl: "#111111",
-      secondary: "#111111",
-      muted: "#111111",
-      accentSurface: "#141414",
+      surface: "#171717",
+      surfaceRaised: "#171717",
+      surfaceOverlay: "#171717",
+      toolbarControl: "#171717",
+      secondary: "#171717",
+      muted: "#171717",
+      accentSurface: "#202020",
     });
   });
 
@@ -107,16 +107,37 @@ describe("theme files", () => {
     expectThemeColors(getStandardThemeColors("light"), {
       canvas: "#fcfcfc",
       sidebar: "#fafafa",
-      sidebarRowActive: "#ffffff",
-      messageSurface: "#f4f4f5",
+      sidebarRowActive: "#e8e8e8",
+      messageSurface: "#ededed",
     });
     expectThemeColors(getStandardThemeColors("dark"), {
       canvas: "#0a0a0a",
       sidebar: "#000000",
-      sidebarRowActive: "#1a1b1b",
-      messageSurface: "#141414",
+      sidebarRowActive: "#242424",
+      messageSurface: "#202020",
     });
   });
+
+  it.each(["light", "dark"] as const)(
+    "keeps ADE's secondary text and primary actions readable in %s mode",
+    (appearance) => {
+      const colors = getStandardThemeColors(appearance);
+      for (const [text, background] of [
+        [colors.textMuted, colors.canvas],
+        [colors.mutedForeground, colors.muted],
+        [colors.placeholder, colors.surfaceRaised],
+        [colors.sidebarMutedForeground, colors.sidebar],
+        [colors.sidebarForeground, colors.sidebarRowActive],
+        [colors.messageForeground, colors.messageSurface],
+        [colors.messageActionForeground, colors.messageAction],
+        [colors.messageActionForeground, colors.messageActionHover],
+      ]) {
+        expect(contrastRatio(text!, background!)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(colors.messageSurface, colors.canvas)).toBeGreaterThan(1.1);
+      expect(contrastRatio(colors.sidebarRowActive, colors.sidebar)).toBeGreaterThan(1.1);
+    },
+  );
 
   it("derives readable, distinctive vivid palettes from exact seeds", () => {
     const seeds: ReadonlyArray<["light" | "dark", string, string]> = [

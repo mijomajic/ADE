@@ -11,9 +11,42 @@ import {
   HostProcessWorkingDirectory,
 } from "@t3tools/shared/hostProcess";
 
-import { repointLauncher, resolveLauncherPath } from "./update.ts";
+import { isBootServiceCgroup, repointLauncher, resolveLauncherPath } from "./update.ts";
+
+it("recognizes ADE's boot service without claiming T3 Code or similarly named units", () => {
+  assert.isTrue(isBootServiceCgroup("0::/user.slice/user-1000.slice/app.slice/ade.service"));
+  assert.isTrue(isBootServiceCgroup("0::/user.slice/ade.service/worker"));
+  assert.isFalse(isBootServiceCgroup("0::/user.slice/t3code.service"));
+  assert.isFalse(isBootServiceCgroup("0::/user.slice/ade.service-other"));
+});
 
 it.layer(NodeServices.layer)("t3 update launcher", (it) => {
+  it.effect("repoints ADE's Windows launcher and leaves the T3 launcher untouched", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const root = yield* fs.makeTempDirectoryScoped({ prefix: "ade-update-" });
+      const oldExe = path.join(root, "runtime/versions/1.0.0/t3.exe");
+      const newExe = path.join(root, "runtime/versions/2.0.0/t3.exe");
+      const bin = path.join(root, "bin");
+      const launcher = path.join(bin, "ade.cmd");
+      const upstreamLauncher = path.join(bin, "t3.cmd");
+      yield* fs.makeDirectory(bin, { recursive: true });
+      yield* fs.writeFileString(launcher, `@echo off\r\n"${oldExe}" %*`);
+      yield* fs.writeFileString(upstreamLauncher, "existing T3 launcher");
+
+      const repointed = yield* repointLauncher({
+        launchedAs: oldExe,
+        versionsDir: path.join(root, "runtime/versions"),
+        targetEntryPath: newExe,
+      }).pipe(Effect.provideService(HostProcessEnvironment, { PATH: bin }));
+
+      assert.equal(Option.getOrUndefined(repointed), launcher);
+      assert.include(yield* fs.readFileString(launcher), newExe);
+      assert.equal(yield* fs.readFileString(upstreamLauncher), "existing T3 launcher");
+    }).pipe(Effect.scoped, Effect.provideService(HostProcessPlatform, "win32")),
+  );
+
   it.effect("repoints a symlink that lives in a runtime versions tree", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

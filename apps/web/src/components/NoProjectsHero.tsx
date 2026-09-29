@@ -19,8 +19,8 @@ export function NoProjectsHero() {
         <Empty size="hero" className="flex-1">
           <div className="w-full max-w-lg px-8 py-12">
             <EmptyHeader className="max-w-none">
-              <EmptyTitle>What should we work on?</EmptyTitle>
-              <EmptyDescription>Add a project to start your first thread.</EmptyDescription>
+              <EmptyTitle>Your next idea starts here.</EmptyTitle>
+              <EmptyDescription>Bring your projects and agents together in ADE.</EmptyDescription>
               <div className="mt-6 flex justify-center">
                 <Button size="sm" onClick={openAddProject}>
                   <PlusIcon className="size-4" />

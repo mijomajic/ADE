@@ -8,6 +8,7 @@ const originalWindow = globalThis.window;
 
 afterEach(() => {
   vi.resetModules();
+  vi.unstubAllEnvs();
 
   if (originalWindow === undefined) {
     Reflect.deleteProperty(globalThis, "window");
@@ -18,6 +19,16 @@ afterEach(() => {
 });
 
 describe("branding", () => {
+  it("uses ADE for a standalone web client", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_HOSTED_APP_CHANNEL", "");
+
+    const branding = await import("./branding");
+
+    expect(branding.APP_BASE_NAME).toBe("ADE");
+    expect(branding.APP_DISPLAY_NAME).toBe("ADE (Alpha)");
+  });
+
   it("uses injected desktop branding when available", async () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
@@ -47,7 +58,7 @@ describe("branding", () => {
     expect(branding.HOSTED_APP_CHANNEL).toBe("nightly");
     expect(branding.HOSTED_APP_CHANNEL_LABEL).toBe("Nightly");
     expect(branding.APP_STAGE_LABEL).toBe("Nightly");
-    expect(branding.APP_DISPLAY_NAME).toBe("T3 Code (Nightly)");
+    expect(branding.APP_DISPLAY_NAME).toBe("ADE (Nightly)");
   });
 
   it("does not label the latest hosted app channel", async () => {
@@ -58,7 +69,7 @@ describe("branding", () => {
     expect(branding.HOSTED_APP_CHANNEL).toBe("latest");
     expect(branding.HOSTED_APP_CHANNEL_LABEL).toBe("Latest");
     expect(branding.APP_STAGE_LABEL).toBe("Latest");
-    expect(branding.APP_DISPLAY_NAME).toBe("T3 Code");
+    expect(branding.APP_DISPLAY_NAME).toBe("ADE");
   });
 
   it("ignores unknown hosted app channels", async () => {

@@ -9,8 +9,8 @@ describe("getMobileTerminalTheme", () => {
   it("uses the shared default light terminal colors", () => {
     expect(getMobileTerminalTheme("t3-code", "light")).toMatchObject({
       background: "#fcfcfc",
-      foreground: "#27272a",
-      cursorForeground: "#26384e",
+      foreground: "#171717",
+      cursorForeground: "#171717",
       cursorBackground: "#fcfcfc",
     });
   });
@@ -18,8 +18,8 @@ describe("getMobileTerminalTheme", () => {
   it("uses the shared default dark terminal colors", () => {
     expect(getMobileTerminalTheme("t3-code", "dark")).toMatchObject({
       background: "#0a0a0a",
-      foreground: "#f5f5f5",
-      cursorForeground: "#b4cbff",
+      foreground: "#ededed",
+      cursorForeground: "#ededed",
       cursorBackground: "#0a0a0a",
     });
   });
@@ -48,8 +48,8 @@ describe("buildGhosttyThemeConfig", () => {
     const config = buildGhosttyThemeConfig(getMobileTerminalTheme("t3-code", "dark"));
 
     expect(config).toContain("background = #0a0a0a");
-    expect(config).toContain("foreground = #f5f5f5");
-    expect(config).toContain("cursor-color = #b4cbff");
+    expect(config).toContain("foreground = #ededed");
+    expect(config).toContain("cursor-color = #ededed");
     expect(config).toContain("palette = 0=#141415");
     expect(config).toContain("palette = 15=#c6c6c8");
     expect(config.endsWith("\n")).toBe(true);

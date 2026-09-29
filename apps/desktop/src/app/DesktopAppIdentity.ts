@@ -18,22 +18,10 @@ const AppPackageMetadata = Schema.Struct({
 });
 const decodeAppPackageMetadata = Schema.decodeEffect(Schema.fromJsonString(AppPackageMetadata));
 
-export class DesktopUserDataPathResolutionError extends Schema.TaggedError<DesktopUserDataPathResolutionError>()(
-  "DesktopUserDataPathResolutionError",
-  {
-    legacyPath: Schema.String,
-    cause: Schema.Defect(),
-  },
-) {
-  override get message(): string {
-    return `Failed to inspect legacy desktop user-data path at "${this.legacyPath}".`;
-  }
-}
-
 export class DesktopAppIdentity extends Context.Service<
   DesktopAppIdentity,
   {
-    readonly resolveUserDataPath: Effect.Effect<string, DesktopUserDataPathResolutionError>;
+    readonly resolveUserDataPath: Effect.Effect<string>;
     readonly configure: Effect.Effect<void>;
   }
 >()("@t3tools/desktop/app/DesktopAppIdentity") {}
@@ -47,23 +35,8 @@ const normalizeCommitHash = (value: string): Option.Option<string> => {
 
 export const resolveUserDataPath = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
-  const fileSystem = yield* FileSystem.FileSystem;
-  const legacyPath = environment.path.join(
-    environment.appDataDirectory,
-    environment.legacyUserDataDirName,
-  );
-  const legacyPathExists = yield* fileSystem.exists(legacyPath).pipe(
-    Effect.mapError(
-      (cause) =>
-        new DesktopUserDataPathResolutionError({
-          legacyPath,
-          cause,
-        }),
-    ),
-  );
-  return legacyPathExists
-    ? legacyPath
-    : environment.path.join(environment.appDataDirectory, environment.userDataDirName);
+  // ADE owns a separate Electron profile; never migrate or reuse T3 Code's profile.
+  return environment.path.join(environment.appDataDirectory, environment.userDataDirName);
 }).pipe(Effect.withSpan("desktop.appIdentity.resolveUserDataPath"));
 
 /** @public Service construction is part of the canonical Effect module API. */
@@ -113,9 +86,7 @@ export const make = Effect.gen(function* () {
   });
 
   const userDataPath = resolveUserDataPath.pipe(
-    Effect.provide(
-      yield* Effect.context<DesktopEnvironment.DesktopEnvironment | FileSystem.FileSystem>(),
-    ),
+    Effect.provide(yield* Effect.context<DesktopEnvironment.DesktopEnvironment>()),
   );
 
   const configure = Effect.gen(function* () {

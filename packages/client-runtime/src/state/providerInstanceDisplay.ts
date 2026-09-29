@@ -70,6 +70,25 @@ export function normalizeProviderAccentColor(value: string | undefined): string 
   return /^#[0-9a-fA-F]{6}$/u.test(trimmed) ? trimmed : undefined;
 }
 
+/** Choose the higher-contrast text color using WCAG relative luminance.
+ * Unset or unsupported accents leave the badge's themed foreground intact. */
+export function providerInstanceBadgeForeground(
+  accentColor: string | undefined,
+): "#000000" | "#ffffff" | undefined {
+  const normalized = normalizeProviderAccentColor(accentColor);
+  if (!normalized) return undefined;
+
+  const linearChannel = (offset: number) => {
+    const value = Number.parseInt(normalized.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * linearChannel(1) + 0.7152 * linearChannel(3) + 0.0722 * linearChannel(5);
+  const blackContrast = (luminance + 0.05) / 0.05;
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  return blackContrast >= whiteContrast ? "#000000" : "#ffffff";
+}
+
 /**
  * Whether an instance's icon carries the account badge: accent color set, or
  * several instances sharing a driver so the brand glyph alone is ambiguous.

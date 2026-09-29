@@ -85,6 +85,9 @@ it("discovery neither installs a helper nor requests a screenshot", async () => 
 });
 it("installs offline at a stable executable path and probes only capabilities", async () => {
   await setup.perform("install-hyprland-helper");
+  expect(hyprlandCaptureExecutable(paths)).toContain(
+    `${NodePath.sep}ade${NodePath.sep}hyprland-capture${NodePath.sep}`,
+  );
   expect((await NodeFSP.stat(hyprlandCaptureExecutable(paths))).mode & 0o777).toBe(0o755);
   expect(await setup.state()).toMatchObject({ status: "ready", feedbackAvailable: true });
   expect(execute.mock.calls.map(([file, args]) => [file, args])).toEqual([
@@ -93,7 +96,13 @@ it("installs offline at a stable executable path and probes only capabilities", 
 });
 it("updates explicitly and removes only its helper", async () => {
   await setup.perform("install-hyprland-helper");
-  const unrelated = NodePath.join(paths.dataHome, "keep.txt");
+  const unrelated = NodePath.join(
+    paths.dataHome,
+    "t3code",
+    "hyprland-capture",
+    "t3-hyprland-snap-shot",
+  );
+  await NodeFSP.mkdir(NodePath.dirname(unrelated), { recursive: true });
   await NodeFSP.writeFile(unrelated, "keep");
   await NodeFSP.writeFile(paths.bundle, "update");
   expect((await setup.state()).status).toBe("update-required");

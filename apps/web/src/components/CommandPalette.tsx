@@ -76,7 +76,7 @@ import { useDesktopLocalBootstraps } from "../connection/useDesktopLocalBootstra
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useOpenPanelPullRequestUrl } from "../hooks/useOpenPanelPullRequestUrl";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
-import { useClientSettings } from "../hooks/useSettings";
+import { useClientSettings, useLegacySidebarEnabled } from "../hooks/useSettings";
 import { useTheme } from "../hooks/useTheme";
 import { useCustomThemes } from "../hooks/useCustomThemes";
 import { useEnvironmentThemeDefinitions } from "../hooks/useEnvironmentTheme";
@@ -98,7 +98,11 @@ import { useAtomQueryRunner } from "../state/use-atom-query-runner";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useServerConfigs, useThreadShells, waitForProject } from "../state/entities";
 import { useThreadSearch } from "../state/queries";
-import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
+import {
+  resolveScopedNewThreadProjectRef,
+  resolveThreadActionProjectRef,
+  startNewThreadFromContext,
+} from "../lib/chatThreadActions";
 import {
   appendBrowsePathSegment,
   ensureBrowseDirectoryPath,
@@ -727,6 +731,8 @@ function OpenCommandPaletteDialog(props: {
   const availableSettingsSearchItems = useAvailableSettingsSearchItems();
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
+  const legacySidebarEnabled = useLegacySidebarEnabled();
+  const projectScopeKey = useUiStateStore((store) => store.sidebarProjectScopeKey);
   const projects = useProjects();
   const referenceThreadRef =
     pathname === "/pull-requests"
@@ -942,6 +948,12 @@ function OpenCommandPaletteDialog(props: {
         preferredProjectRef: contextualProjectRef,
       }),
     [contextualProjectRef, projectGroups],
+  );
+  const scopedProjectRef = resolveScopedNewThreadProjectRef(
+    legacySidebarEnabled
+      ? null
+      : projectGroups.find((group) => group.projectKey === projectScopeKey),
+    contextualProjectRef,
   );
   const pickerProjects = useMemo(
     () =>
@@ -1748,6 +1760,9 @@ function OpenCommandPaletteDialog(props: {
 
   if (projects.length > 0) {
     const activeProjectTitle =
+      (scopedProjectRef
+        ? projectGroups.find((group) => group.projectKey === projectScopeKey)?.displayName
+        : null) ??
       projectPickerEntries.find((entry) => entry.isPreferred)?.group.displayName ??
       (currentProjectId ? (projectTitleById.get(currentProjectId) ?? null) : null);
 
@@ -1768,6 +1783,7 @@ function OpenCommandPaletteDialog(props: {
             activeDraftThread,
             activeThread: activeThread ?? undefined,
             defaultProjectRef,
+            scopedProjectRef,
             handleNewThread,
           });
         },

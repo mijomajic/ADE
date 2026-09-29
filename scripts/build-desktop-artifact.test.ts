@@ -90,7 +90,7 @@ import {
   WslRuntimeArchiveMissingError,
   wslRuntimeArchiveStem,
 } from "./build-desktop-artifact.ts";
-import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
+import { ADE_BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
@@ -263,21 +263,21 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   });
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
-    assert.equal(resolveDesktopProductName("0.0.17"), "T3 Code (Alpha)");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "T3 Code (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "ADE (Alpha)");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "ADE (Nightly)");
   });
 
-  it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
+  it("uses ADE desktop artwork for stable and nightly versions", () => {
     assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17"), {
-      macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
+      macIconPng: ADE_BRAND_ASSET_PATHS.iconPng,
+      linuxIconPng: ADE_BRAND_ASSET_PATHS.iconPng,
+      windowsIconIco: ADE_BRAND_ASSET_PATHS.iconIco,
     });
 
     assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42"), {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
+      macIconPng: ADE_BRAND_ASSET_PATHS.iconPng,
+      linuxIconPng: ADE_BRAND_ASSET_PATHS.iconPng,
+      windowsIconIco: ADE_BRAND_ASSET_PATHS.iconIco,
     });
   });
 
@@ -293,7 +293,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                T3CODE_DESKTOP_UPDATE_REPOSITORY: "pingdotgg/t3code",
+                T3CODE_DESKTOP_UPDATE_REPOSITORY: "mijomajic/ADE",
               },
             }),
           ),
@@ -304,7 +304,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                GITHUB_REPOSITORY: "pingdotgg/t3code",
+                GITHUB_REPOSITORY: "mijomajic/ADE",
               },
             }),
           ),
@@ -313,17 +313,36 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
       assert.deepStrictEqual(latestConfig, {
         provider: "github",
-        owner: "pingdotgg",
-        repo: "t3code",
+        owner: "mijomajic",
+        repo: "ADE",
         releaseType: "release",
       });
       assert.deepStrictEqual(nightlyConfig, {
         provider: "github",
-        owner: "pingdotgg",
-        repo: "t3code",
+        owner: "mijomajic",
+        repo: "ADE",
         releaseType: "prerelease",
         channel: "nightly",
       });
+    }),
+  );
+
+  it.effect("does not configure updates from upstream or an unrelated repository", () =>
+    Effect.gen(function* () {
+      for (const env of [
+        {},
+        { GITHUB_REPOSITORY: "pingdotgg/t3code" },
+        {
+          T3CODE_DESKTOP_UPDATE_REPOSITORY: "pingdotgg/t3code",
+          GITHUB_REPOSITORY: "mijomajic/ADE",
+        },
+        { GITHUB_REPOSITORY: "someone/another-app" },
+      ]) {
+        const config = yield* resolveGitHubPublishConfig("latest").pipe(
+          Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env }))),
+        );
+        assert.isUndefined(config);
+      }
     }),
   );
 
@@ -358,20 +377,20 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         undefined,
       );
 
-      assert.notProperty(preview, "publish");
-      assert.notProperty(previewChannel, "publish");
+      assert.isNull(preview.publish);
+      assert.isNull(previewChannel.publish);
       assert.deepStrictEqual(release.publish, [
         {
           provider: "github",
-          owner: "pingdotgg",
-          repo: "t3code",
+          owner: "mijomajic",
+          repo: "ADE",
           releaseType: "release",
         },
       ]);
     }).pipe(
       Effect.provide(
         ConfigProvider.layer(
-          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
+          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "mijomajic/ADE" } }),
         ),
       ),
     ),
@@ -667,7 +686,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "**/*.map",
       ]);
       assert.deepStrictEqual(mac.dmg, {
-        title: "T3 Code (Alpha) 1.2.3 Installer",
+        title: "ADE (Alpha) 1.2.3 Installer",
         background: "dmg/dmg-background-latest.png",
         window: { width: 640, height: 432 },
         contents: [
@@ -680,10 +699,20 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // A Linux AppImage build also emits the .deb from the same run.
       assert.deepStrictEqual((linux.linux as Record<string, unknown>).target, ["AppImage", "deb"]);
       // Linux must register the renderer schemes so the generated .desktop
-      // entry advertises MimeType=x-scheme-handler/t3code; for OAuth deep links.
+      // entry advertises MimeType=x-scheme-handler/ade; for OAuth deep links.
       assert.deepStrictEqual((linux.linux as Record<string, unknown>).protocols, [
-        { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "ADE", schemes: ["ade", "ade-dev"] },
       ]);
+      assert.equal((linux.linux as Record<string, unknown>).executableName, "ade");
+      assert.deepStrictEqual((mac.mac as Record<string, unknown>).protocols, [
+        { name: "ADE", schemes: ["ade", "ade-dev"] },
+      ]);
+      for (const config of [mac, linux, win]) {
+        assert.equal(config.appId, "com.mijomajic.ade");
+        assert.equal(config.productName, "ADE (Alpha)");
+        assert.equal(config.artifactName, "ADE-${version}-${arch}.${ext}");
+        assert.isNull(config.publish);
+      }
       assert.deepStrictEqual(mac.files, [...DESKTOP_FILE_EXCLUSIONS, ...MAC_FILE_EXCLUSIONS]);
       assert.deepStrictEqual(linux.files, [...DESKTOP_FILE_EXCLUSIONS, ...LINUX_FILE_EXCLUSIONS]);
       assert.deepStrictEqual(win.files, DESKTOP_FILE_EXCLUSIONS);
@@ -1815,7 +1844,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     });
 
     assert.deepStrictEqual(configuration, {
-      appId: "com.t3tools.t3code",
+      appId: "com.mijomajic.ade",
       teamId: "ABC1234567",
       rpDomains: ["example.clerk.accounts.dev"],
       provisioningProfilePath: "/tmp/t3code.provisionprofile",
@@ -1835,7 +1864,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "clerk.example.com",
       "example.clerk.accounts.dev",
     ]);
-    assert.include(entitlements, "<string>ABC1234567.com.t3tools.t3code</string>");
+    assert.include(entitlements, "<string>ABC1234567.com.mijomajic.ade</string>");
     assert.include(entitlements, "<string>webcredentials:clerk.example.com</string>");
     assert.include(entitlements, "<string>webcredentials:example.clerk.accounts.dev</string>");
     assert.include(entitlements, "<key>com.apple.security.cs.allow-jit</key>");
@@ -1930,13 +1959,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       });
 
       const mac = config.mac as Record<string, unknown>;
-      assert.equal(config.appId, "com.t3tools.t3code");
+      assert.equal(config.appId, "com.mijomajic.ade");
       assert.equal(mac.entitlements, "/tmp/entitlements.mac.plist");
       assert.equal(mac.provisioningProfile, "/tmp/t3code.provisionprofile");
       assert.match(String(mac.sign), /[\\/]scripts[\\/]sign-macos\.ts$/);
-      assert.deepStrictEqual(mac.protocols, [
-        { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
-      ]);
+      assert.deepStrictEqual(mac.protocols, [{ name: "ADE", schemes: ["ade", "ade-dev"] }]);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 

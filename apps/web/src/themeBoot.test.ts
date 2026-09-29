@@ -4,6 +4,7 @@ import indexHtml from "../index.html?raw";
 import {
   CUSTOM_THEMES_STORAGE_KEY,
   getDefaultThemeColors,
+  getStandardThemeColors,
   getThemeColorsForMode,
   invalidateCustomThemes,
   isKnownThemePreference,
@@ -149,6 +150,23 @@ const CHARCOAL_DARK_ONLY = {
 };
 
 describe("index.html boot script", () => {
+  it.each(["light", "dark"] as const)(
+    "paints ADE's %s canvas before the client loads",
+    (appearance) => {
+      const colors = getStandardThemeColors(appearance);
+      const boot = runBootScript({
+        storage: { [THEME_STORAGE_KEY]: appearance },
+        prefersDark: appearance === "dark",
+      });
+
+      expect(toCanonicalThemeColor(boot.backgroundColor)).toBe(colors.chrome);
+      expect(toCanonicalThemeColor(boot.metaContent!)).toBe(colors.chrome);
+      expect(toCanonicalThemeColor(boot.bootVariables["--boot-background"]!)).toBe(colors.canvas);
+      expect(toCanonicalThemeColor(boot.bootVariables["--boot-foreground"]!)).toBe(colors.text);
+      expect(toCanonicalThemeColor(boot.bootVariables["--boot-accent"]!)).toBe(colors.accent);
+    },
+  );
+
   const parityCases: ReadonlyArray<{
     name: string;
     storage: Record<string, string>;
@@ -493,8 +511,8 @@ describe("index.html boot script", () => {
 
     expect(boot.themeId).toBeUndefined();
     expect(boot.themeSelected).toBeUndefined();
-    expect(boot.backgroundColor).toBe("#ffffff");
-    expect(boot.metaContent).toBe("#ffffff");
+    expect(boot.backgroundColor).toBe("#fcfcfc");
+    expect(boot.metaContent).toBe("#fcfcfc");
   });
 
   it("leaves unknown preferences unthemed so the runtime default applies", () => {

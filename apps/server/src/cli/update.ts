@@ -111,8 +111,8 @@ export function launcherOwnsVersionsDir(
 }
 
 /**
- * The launcher the install scripts leave behind: a symlink at `<bin>/t3` on
- * POSIX, a `t3.cmd` shim on Windows. `t3 update` repoints it so the next `t3`
+ * The launcher the install scripts leave behind: a symlink at `<bin>/ade` on
+ * POSIX, an `ade.cmd` shim on Windows. `ade update` repoints it so the next `ade`
  * invocation is the new version. Only a launcher that already points into
  * this home's `runtime/versions` tree is touched; a plain copy of the
  * executable, or a launcher for some other install, is left alone.
@@ -133,9 +133,9 @@ export const repointLauncher = Effect.fn("cli.update.repoint_launcher")(function
 
   if (platform === "win32") {
     // The shim runs the executable by absolute path, so the executable sees
-    // itself as argv0; the shim is the `t3.cmd` next to it only when launched
+    // itself as argv0; the shim is the `ade.cmd` next to it only when launched
     // from an install script's bin directory. Find it by searching the
-    // directories that would resolve `t3` on this shell's PATH.
+    // directories that would resolve `ade` on this shell's PATH.
     const shimPath = yield* findWindowsShim(input.launchedAs);
     if (shimPath === undefined) return Option.none<string>();
     const current = yield* fs.readFileString(shimPath).pipe(Effect.option);
@@ -145,7 +145,8 @@ export const repointLauncher = Effect.fn("cli.update.repoint_launcher")(function
       .writeFileString(shimPath, `@echo off\r\n"${input.targetEntryPath}" %*`)
       .pipe(
         Effect.mapError(
-          () => new CliUpdateError({ reason: `Could not rewrite the t3 launcher at ${shimPath}.` }),
+          () =>
+            new CliUpdateError({ reason: `Could not rewrite the ADE launcher at ${shimPath}.` }),
         ),
       );
     return Option.some(shimPath);
@@ -160,7 +161,9 @@ export const repointLauncher = Effect.fn("cli.update.repoint_launcher")(function
     Effect.andThen(fs.rename(tempLink, input.launchedAs)),
     Effect.mapError(
       () =>
-        new CliUpdateError({ reason: `Could not repoint the t3 launcher at ${input.launchedAs}.` }),
+        new CliUpdateError({
+          reason: `Could not repoint the ADE launcher at ${input.launchedAs}.`,
+        }),
     ),
   );
   return Option.some(input.launchedAs);
@@ -195,7 +198,7 @@ export const resolveLauncherPath = Effect.gen(function* () {
 
 /**
  * On Windows a `.cmd` shim is what PATH resolves, but the executable it runs
- * only ever sees its own path. Walk PATH for a `t3.cmd` whose target is the
+ * only ever sees its own path. Walk PATH for an `ade.cmd` whose target is the
  * running executable; that is the launcher the install script wrote.
  */
 export const findWindowsShim = Effect.fn("cli.update.find_windows_shim")(function* (
@@ -209,7 +212,7 @@ export const findWindowsShim = Effect.fn("cli.update.find_windows_shim")(functio
     ...(environment["PATH"] ?? environment["Path"] ?? "").split(";"),
   ].filter((entry) => entry.trim().length > 0);
   for (const directory of candidates) {
-    const shimPath = path.join(directory, "t3.cmd");
+    const shimPath = path.join(directory, "ade.cmd");
     const contents = yield* fs.readFileString(shimPath).pipe(Effect.option);
     if (Option.isNone(contents)) continue;
     const target = /^"([^"]+)"/m.exec(contents.value)?.[1];
@@ -301,6 +304,10 @@ const findForegroundServer = Effect.fn("cli.update.find_foreground_server")(func
   return state.value;
 });
 
+export function isBootServiceCgroup(cgroup: string): boolean {
+  return /(?:^|\/)ade\.service(?:\/|$)/m.test(cgroup);
+}
+
 const belongsToBootService = Effect.fn("cli.update.belongs_to_boot_service")(function* (
   pid: number,
 ) {
@@ -309,7 +316,7 @@ const belongsToBootService = Effect.fn("cli.update.belongs_to_boot_service")(fun
   const runner = yield* ProcessRunner.ProcessRunner;
   if (platform === "linux") {
     const cgroup = yield* fs.readFileString(`/proc/${pid}/cgroup`).pipe(Effect.option);
-    return Option.isSome(cgroup) && cgroup.value.includes("/t3code.service");
+    return Option.isSome(cgroup) && isBootServiceCgroup(cgroup.value);
   }
   if (platform === "darwin") {
     // The service server's parent is the launcher process.

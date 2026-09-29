@@ -13,7 +13,13 @@ import { selectProjectGroupingSettings } from "../logicalProject";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
 import { dispatchPreviewAction } from "../components/preview/previewActionBus";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
-import { startNewThreadFromContext } from "../lib/chatThreadActions";
+import {
+  resolveScopedNewThreadProjectRef,
+  resolveThreadActionProjectRef,
+  startNewThreadFromContext,
+} from "../lib/chatThreadActions";
+import { shouldCreateNewThreadInCurrentProject } from "../components/Sidebar.logic";
+import { useUiStateStore } from "../uiStateStore";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { isEditableFocused } from "../lib/editableFocus";
@@ -37,15 +43,27 @@ function ChatRouteGlobalShortcuts() {
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
   const projects = useProjects();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
-  const projectGroupCount = useMemo(
+  const projectScopeKey = useUiStateStore((store) => store.sidebarProjectScopeKey);
+  const projectGroups = useMemo(
     () =>
       buildSidebarProjectSnapshots({
         projects,
         settings: projectGroupingSettings,
         primaryEnvironmentId,
         resolveEnvironmentLabel: () => null,
-      }).length,
+      }),
     [primaryEnvironmentId, projectGroupingSettings, projects],
+  );
+  const scopedProjectRef = resolveScopedNewThreadProjectRef(
+    legacySidebarEnabled
+      ? null
+      : projectGroups.find((group) => group.projectKey === projectScopeKey),
+    resolveThreadActionProjectRef({
+      activeDraftThread,
+      activeThread,
+      defaultProjectRef,
+      handleNewThread,
+    }),
   );
   const terminalOpen = useTerminalUiStateStore((state) =>
     routeThreadRef
@@ -100,6 +118,7 @@ function ChatRouteGlobalShortcuts() {
           activeDraftThread,
           activeThread: activeThread ?? undefined,
           defaultProjectRef,
+          scopedProjectRef,
           handleNewThread,
         });
         return;
@@ -108,10 +127,14 @@ function ChatRouteGlobalShortcuts() {
       if (command === "chat.new") {
         event.preventDefault();
         event.stopPropagation();
-        // The default sidebar routes creation through the command palette
-        // whenever there is a real choice to make; the legacy sidebar (and
-        // single-project setups) keep the immediate contextual create.
-        if (!legacySidebarEnabled && projectGroupCount > 1) {
+        if (
+          !legacySidebarEnabled &&
+          !shouldCreateNewThreadInCurrentProject(
+            false,
+            projectGroups.length,
+            scopedProjectRef !== null,
+          )
+        ) {
           openCommandPalette({ open: "new-thread-in" });
           return;
         }
@@ -119,6 +142,7 @@ function ChatRouteGlobalShortcuts() {
           activeDraftThread,
           activeThread: activeThread ?? undefined,
           defaultProjectRef,
+          scopedProjectRef,
           handleNewThread,
         });
         return;
@@ -180,7 +204,8 @@ function ChatRouteGlobalShortcuts() {
     keybindings,
     defaultProjectRef,
     previewOpen,
-    projectGroupCount,
+    projectGroups.length,
+    scopedProjectRef,
     routeThreadRef,
     selectedThreadKeysSize,
     legacySidebarEnabled,

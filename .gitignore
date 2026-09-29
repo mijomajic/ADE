@@ -44,3 +44,7 @@ node_modules/
 
 # pnpm content-addressable store; never belongs in the repo.
 .pnpm-store/
+
+# ADE development state and local research caches
+.ade/
+.firecrawl/
