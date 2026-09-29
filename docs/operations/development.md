@@ -21,7 +21,7 @@ Use `pnpm run ade:dev` for server and web, or `pnpm run ade:desktop` for the Ele
 `dev:server` and `dev:web` start those processes separately.
 See the [mobile README](../../apps/mobile/README.md) for native builds and Metro.
 
-Flags go directly after the task name, for example `vp run dev --home-dir /tmp/t3code-dev`.
+Flags go directly after the task name, for example `pnpm run dev --home-dir /tmp/t3code-dev`.
 Add `--browser` to open a browser automatically.
 
 ### State and ports
@@ -39,7 +39,7 @@ different preference when needed.
 
 ### Sharing and remote debugging
 
-`vp run dev --share` publishes the web port over the machine's tailnet and prints a pairing URL
+`pnpm run dev --share` publishes the web port over the machine's tailnet and prints a pairing URL
 for that origin. Give the tester the complete URL, including its token. The dev runner removes
 its mapping on exit.
 
@@ -87,7 +87,7 @@ For a manual worktree or launcher without that link, export the same fixed value
 export T3CODE_DEV_AUTH_TOKEN="<the value generated above>"
 ```
 
-Do not generate a new value at startup. Start or restart `vp run dev --share` after configuration,
+Do not generate a new value at startup. Start or restart `pnpm run dev --share` after configuration,
 then open its printed startup pairing URL once per browser profile on that hostname. Later web dev
 servers on the same hostname accept the shared cookie across ports. The cookie expires after 30
 days. Reload an old tab if its URL now serves a replacement environment.
@@ -103,29 +103,30 @@ for the security model.
 Run checks for the files and packages you changed:
 
 ```sh
-vp test run <files>
-vp lint <files>
-vp run --filter <package> typecheck
+pnpm exec vp test run <files>
+pnpm exec vp lint <files>
+pnpm --filter <package> run typecheck
 ```
 
-Use `vp run lint:mobile` for native mobile changes. CI owns the full suite; see
-[ci.yml](../../.github/workflows/ci.yml) for its current jobs.
-The [manual Windows lane](../../.github/workflows/windows-tests.yml) is available for focused
-Windows investigation while that suite is not a required gate.
+Use `pnpm run lint:mobile` for native mobile changes. The inherited
+[CI definition](../../.github/workflows/ci.yml) and
+[manual Windows lane](../../.github/workflows/windows-tests.yml) describe broader checks.
+GitHub Actions are disabled on this fork until its workflows and deployment settings
+are configured for ADE. Run focused checks locally before pushing.
 
 ### Unused code
 
-`vp run knip:check` checks unused files and dependencies across the repo, then
+`pnpm run knip:check` checks unused files and dependencies across the repo, then
 unused runtime exports in `apps/server`, `apps/desktop`, `apps/web`, and every internal package under
-`packages/`. CI enforces both checks.
+`packages/`. The inherited CI definition includes both checks.
 Exported types and Effect schemas are allowed without consumers. The schema preprocessor
 recognizes schema types, including aliases and schema classes; functions that create or decode
 schemas remain checked. Canonical Effect service construction APIs stay exported with an explicit
 `@public` annotation, which Knip recognizes. Completely unused files remain checked too.
 Named exports in web UI component modules are kept as complete component sets. Knip ignores
 unused exports in `apps/web/src/components/ui/*.tsx`, while still reporting an entire unused file.
-Use `vp run knip --workspace apps/web` to audit one workspace, including exports,
-or `vp run knip:production --workspace apps/web` to find code kept alive only by tests.
+Use `pnpm run knip --workspace apps/web` to audit one workspace, including exports,
+or `pnpm run knip:production --workspace apps/web` to find code kept alive only by tests.
 The full export audit still has findings and is not a repo-wide CI gate. Extend the
 export check's workspace selectors as more workspaces become clean. Review callers before
 deleting code; production mode can also report development scripts and test fixtures.
@@ -136,13 +137,13 @@ Runtime-discovered entrypoints and dependency exceptions belong in [knip.jsonc](
 Local artifact builds are unsigned by default and write to `release/`:
 
 ```sh
-vp run dist:desktop:dmg
-vp run dist:desktop:linux
-vp run dist:desktop:win
+pnpm run dist:desktop:dmg
+pnpm run dist:desktop:linux
+pnpm run dist:desktop:win
 ```
 
 DMGs default to the host architecture. Use `--arch` to choose another target and `--keep-stage`
-to retain packaging files for inspection. Run `vp run dist:desktop:artifact --help` for other
+to retain packaging files for inspection. Run `pnpm run dist:desktop:artifact --help` for other
 options.
 
 ### Linux AppImage prerequisites
