@@ -1,76 +1,43 @@
 import * as Effect from "effect/Effect";
 
-import { HostProcessArguments } from "@t3tools/shared/hostProcess";
+import {
+  HostProcessArguments,
+  HostProcessExecutablePath,
+  HostProcessIsExecutable,
+  HostProcessPlatform,
+} from "@t3tools/shared/hostProcess";
 
-import packageJson from "../../package.json" with { type: "json" };
+const quotePosixArgument = (value: string) => `'${value.replaceAll("'", "'\"'\"'")}'`;
+const quotePowerShellArgument = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
-export type CliRunner = "npx" | "pnpm dlx" | "bunx";
-
-/**
- * How the CLI was launched, judged by where its entry script lives. Each
- * package runner executes out of a distinctive cache/temp layout:
- *
- *   npx      ~/.npm/_npx/<hash>/node_modules/...
- *   pnpm dlx ~/.cache/pnpm/dlx/..., $PNPM_HOME/.pnpm/dlx/...,
- *            or %LOCALAPPDATA%/pnpm-cache/dlx/... on Windows
- *   bunx     ~/.bun/install/cache/... or $TMPDIR/bunx-<uid>-<spec>/...
- *
- * Global installs and repo checkouts match none of these and return null.
- * Detection is best-effort; callers must fail closed to a plain `t3` command.
- */
-function detectCliRunner(entryPath: string): CliRunner | null {
-  const path = entryPath.replaceAll("\\", "/");
-  if (path.includes("/_npx/")) {
-    return "npx";
-  }
-  if (
-    path.includes("/pnpm/dlx/") ||
-    path.includes("/.pnpm/dlx/") ||
-    path.includes("/pnpm-cache/dlx/")
-  ) {
-    return "pnpm dlx";
-  }
-  if (path.includes("/.bun/install/cache/") || path.includes("/bunx-")) {
-    return "bunx";
-  }
-  return null;
-}
-
-/**
- * The `t3` package spec to suggest. The literal spec the user typed (e.g.
- * `t3@nightly`) is resolved away before our process starts, so re-derive it
- * from the running version: nightly builds re-suggest the nightly channel,
- * anything else suggests the bare package.
- */
-function suggestedPackageSpec(version: string): string {
-  const channel = /^[^-+]+-(nightly|preview)\./.exec(version)?.[1];
-  return channel === undefined ? "t3" : `t3@${channel}`;
-}
-
-/**
- * Render a `t3 <subcommand>` suggestion that matches how this process was
- * launched, so copy/pasting it actually works: `npx t3 connect` suggests
- * `npx t3 serve`, a global install suggests `t3 serve`, and a nightly build
- * keeps the `@nightly` tag.
- */
+/** Reuse this fork's actual script instead of resolving the upstream npm package. */
 export function formatCliCommand(input: {
   readonly subcommand: string;
   readonly entryPath: string;
-  readonly version: string;
-}): string {
-  const runner = detectCliRunner(input.entryPath);
-  if (runner === null) {
-    return `t3 ${input.subcommand}`;
+  readonly executablePath: string;
+  readonly isExecutable: boolean;
+  readonly platform: NodeJS.Platform;
+}): string | null {
+  if (input.isExecutable) return `ade ${input.subcommand}`;
+  if (!/\.(?:[cm]?js|[cm]?ts)$/i.test(input.entryPath) || !input.executablePath) return null;
+  const args = [input.executablePath, input.entryPath, input.subcommand];
+  if (input.platform === "win32") {
+    // A copied command may enter cmd.exe or PowerShell. Encoding the literal
+    // PowerShell invocation prevents either outer shell expanding path characters.
+    const script = `& ${args.map(quotePowerShellArgument).join(" ")}`;
+    return `powershell.exe -NoProfile -EncodedCommand ${Buffer.from(script, "utf16le").toString("base64")}`;
   }
-  return `${runner} ${suggestedPackageSpec(input.version)} ${input.subcommand}`;
+  return args.map(quotePosixArgument).join(" ");
 }
 
-/** `formatCliCommand` against this process's real entry path and version. */
 export const resolveCliCommand = (subcommand: string) =>
-  Effect.map(HostProcessArguments, (processArguments) =>
-    formatCliCommand({
+  Effect.gen(function* () {
+    const processArguments = yield* HostProcessArguments;
+    return formatCliCommand({
       subcommand,
       entryPath: processArguments[1] ?? "",
-      version: packageJson.version,
-    }),
-  );
+      executablePath: yield* HostProcessExecutablePath,
+      isExecutable: yield* HostProcessIsExecutable,
+      platform: yield* HostProcessPlatform,
+    });
+  });

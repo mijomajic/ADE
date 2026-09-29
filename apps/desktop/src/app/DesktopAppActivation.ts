@@ -107,7 +107,7 @@ function closeServer(server: NodeNet.Server): Promise<void> {
 }
 
 /**
- * Serves `t3 app` requests on the local control address until `close`.
+ * Serves `ade app` requests on the local control address until `close`.
  *
  * Two desktop apps can share one state dir, for example nightly and a preview
  * build. They share one socket path, so on Unix:
@@ -170,9 +170,7 @@ export async function startDesktopAppControlServer(input: {
       }
       activeRequestId = parsed.requestId;
       void input.handle(parsed).then(finish, () => {
-        finish(
-          invalidResponse(parsed.requestId, "T3 Code could not process the desktop app request."),
-        );
+        finish(invalidResponse(parsed.requestId, "ADE could not process the desktop app request."));
       });
     });
     socket.on("error", () => socket.destroy());

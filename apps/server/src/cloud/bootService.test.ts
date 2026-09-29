@@ -252,7 +252,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
 
 it.layer(NodeServices.layer)("boot service install", (it) => {
   for (const platform of ["linux", "darwin"] as const) {
-    it.effect(`leaves T3 Code's existing ${platform} service untouched`, () =>
+    it.effect(`leaves ADE's existing ${platform} service untouched`, () =>
       Effect.gen(function* () {
         const { service, fs, commands } = yield* makeHarness(platform);
         const path = yield* Path.Path;
@@ -262,14 +262,14 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
           platform === "linux" ? "t3code.service" : "com.t3tools.t3code.service.plist",
         );
         yield* fs.makeDirectory(path.dirname(upstreamUnit), { recursive: true });
-        yield* fs.writeFileString(upstreamUnit, "existing T3 Code service");
+        yield* fs.writeFileString(upstreamUnit, "existing ADE service");
 
         const installed = yield* service.install();
         expect(installed.unitPath).not.toBe(upstreamUnit);
         yield* service.restart;
         yield* service.uninstall;
 
-        expect(yield* fs.readFileString(upstreamUnit)).toBe("existing T3 Code service");
+        expect(yield* fs.readFileString(upstreamUnit)).toBe("existing ADE service");
         expect(commands.some((command) => command.includes("t3code.service"))).toBe(false);
       }),
     );
@@ -533,7 +533,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
         ),
       ).toEqual([]);
       // The files say 1.2.4 but the process is still 1.2.3: not current, and
-      // the reason is named so `t3 service status` can point at restart.
+      // the reason is named so `ade service status` can point at restart.
       const status = yield* newer.status;
       expect(status.current).toBe(false);
       expect(status.problems).toContain("restart-pending");

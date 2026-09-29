@@ -9,11 +9,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const testState = vi.hoisted(() => ({
   updateServer: vi.fn(),
   toast: vi.fn(),
+  copyToClipboard: vi.fn(),
   continueThreadsAfterServerUpdate: false,
 }));
 
 vi.mock("~/hooks/useCopyToClipboard", () => ({
-  useCopyToClipboard: () => ({ copyToClipboard: vi.fn() }),
+  useCopyToClipboard: () => ({ copyToClipboard: testState.copyToClipboard }),
 }));
 vi.mock("~/hooks/useSettings", () => ({
   useEnvironmentSettings: (
@@ -66,7 +67,28 @@ describe("ServerUpdateAction", () => {
   beforeEach(() => {
     testState.updateServer.mockReset();
     testState.toast.mockReset();
+    testState.copyToClipboard.mockReset();
     testState.continueThreadsAfterServerUpdate = false;
+  });
+
+  it("shows machine-specific manual guidance without updating or copying a command", async () => {
+    const action = ServerUpdateAction({
+      environmentId: "env-legacy" as EnvironmentId,
+      serverLabel: "Legacy workstation",
+      selfUpdate: null,
+      targetVersion: "0.0.34",
+    }) as ActionElement;
+
+    action.props.onClick?.();
+    await flushPromises();
+
+    expect(testState.toast).toHaveBeenCalledWith({
+      type: "info",
+      title: "Update Legacy workstation",
+      description: expect.stringContaining("original installation method"),
+    });
+    expect(testState.updateServer).not.toHaveBeenCalled();
+    expect(testState.copyToClipboard).not.toHaveBeenCalled();
   });
 
   it("reports success only after the shared update flow reconnects", async () => {
@@ -84,7 +106,7 @@ describe("ServerUpdateAction", () => {
     expect(testState.toast).toHaveBeenCalledWith({
       type: "success",
       title: "Test server updated",
-      description: "Reconnected on t3@0.0.31.",
+      description: "Reconnected on version 0.0.31.",
     });
   });
 

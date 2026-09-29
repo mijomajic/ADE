@@ -13,7 +13,7 @@
 #   T3CODE_RELEASE_BASE_URL  mirror for releases/download (default: GitHub)
 #
 # The archive is unpacked into $T3CODE_HOME/runtime/versions/<version>, the
-# same layout `t3 service install` uses, so the service reuses this download
+# same layout `ade service install` uses, so the service reuses this download
 # instead of fetching the release again.
 set -eu
 
@@ -193,7 +193,7 @@ else
   fetch_status=0
   fetch "${base_url}/v${version}/SHA256SUMS" "${staging}/SHA256SUMS" || fetch_status=$?
   if [ "$fetch_status" -eq 44 ]; then
-    fail "t3 ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g t3@${version}\`"
+    fail "ADE ${version} has no release archive for ${platform}-${arch}. Choose a published ADE version from https://github.com/${repo}/releases or build ADE from source."
   elif [ "$fetch_status" -ne 0 ]; then
     fail "could not download the release checksums"
   fi

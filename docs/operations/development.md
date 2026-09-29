@@ -2,12 +2,12 @@
 
 ## First checkout
 
-Install `vp` using the [root README](../../README.md#install-vp). The checkout requires Node 24;
-Bun is optional. From the repository root:
+The checkout requires Node.js 24 and pnpm 11.10.0. Vite+ is installed with the
+workspace dependencies. From the repository root:
 
 ```sh
-vp i
-vp run dev
+pnpm install --frozen-lockfile
+pnpm run ade:dev
 ```
 
 Open the pairing URL printed by the dev runner. The bare origin does not authenticate
@@ -17,7 +17,7 @@ Prefer a container? See [Dev container](../internals/devcontainer.md) for VS Cod
 
 ## Choosing a dev process
 
-Use `vp run dev` for server and web, or `vp run dev:desktop` for the Electron client.
+Use `pnpm run ade:dev` for server and web, or `pnpm run ade:desktop` for the Electron client.
 `dev:server` and `dev:web` start those processes separately.
 See the [mobile README](../../apps/mobile/README.md) for native builds and Metro.
 
@@ -27,8 +27,10 @@ Add `--browser` to open a browser automatically.
 ### State and ports
 
 Linked worktrees default to their own `.t3/userdata`, even when `T3CODE_HOME` is set.
-The main checkout defaults to `~/.t3/dev/userdata`. An explicit `--home-dir` wins in both cases.
-Never run a development server against the live `~/.t3/userdata`.
+The generic `dev` task in the main checkout defaults to `~/.ade/dev/userdata`.
+The recommended `ade:dev` and `ade:desktop` tasks explicitly use this checkout's `.ade/userdata`.
+An explicit `--home-dir` wins over other defaults. Never run a development server
+against installed ADE or T3 Code data (`~/.ade/userdata` or `~/.t3/userdata`).
 See [test data](../../AGENTS.md#test-data) for copying a consistent database snapshot.
 
 Read ports from the `[dev-runner]` output. Worktrees derive stable preferences from their paths,

@@ -43,7 +43,7 @@ function versionCore(version: string): string {
 }
 
 /**
- * The skew a user can act on: the connected server runs an older T3 Code than
+ * The skew a user can act on: the connected server runs an older version than
  * this client, so the server is the side that needs updating.
  *
  * Two nightly builds compare their full versions, including the date and run.
@@ -80,7 +80,7 @@ export function resolveVersionMismatch(
   return {
     clientVersion: normalizedClientVersion,
     serverVersion: normalizedServerVersion,
-    hint: "Version mismatch. Try syncing the client and server to the same T3 Code version.",
+    hint: "Version mismatch. Update the server using its original installation method so it is compatible with this client.",
   };
 }
 
@@ -114,9 +114,9 @@ export function supportsServerUpdateThreadContinuation(
   return serverConfig?.environment.capabilities.serverUpdateThreadContinuation === true;
 }
 
-/** The command to hand users whose server cannot update itself. */
-export function manualServerUpdateCommand(targetVersion: string): string {
-  return `npx t3@${targetVersion}`;
+/** Older servers do not identify their distribution or installation method. */
+export function manualServerUpdateGuidance(targetVersion: string): string {
+  return `Update this server using its original installation method, then restart it. Client version: ${targetVersion}.`;
 }
 
 export function serverUpdateGuidance(capability: ServerSelfUpdateCapability): string {

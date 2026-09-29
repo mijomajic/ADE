@@ -1,48 +1,50 @@
-# Running T3 Code in the background
+# Running ADE in the background
 
-On Linux and macOS, T3 Code can run as a service for your user so you do not need
+On Linux and macOS, ADE can run as a service for your user so you do not need
 to keep a terminal open.
 
 ## Manage the service
 
-Install the `t3` CLI first ([Install T3 Code](./install.md#command-line)), then
-run these commands on the machine that will host T3 Code:
+This workflow requires a packaged ADE CLI. This fork does not currently publish
+CLI releases; use the source or desktop setup in [Install ADE](./install.md) for now.
 
-| Task                            | Command                |
-| ------------------------------- | ---------------------- |
-| Install and start               | `t3 service install`   |
-| Inspect status and log location | `t3 service status`    |
-| Move to a newer release         | `t3 update`            |
-| Restart                         | `t3 service restart`   |
-| Stop and remove from startup    | `t3 service uninstall` |
+With a packaged `ade` CLI installed ([CLI details](./install.md#command-line)), run these commands on the machine that will host ADE:
+
+| Task                            | Command                 |
+| ------------------------------- | ----------------------- |
+| Install and start               | `ade service install`   |
+| Inspect status and log location | `ade service status`    |
+| Move to a newer release         | `ade update`            |
+| Restart                         | `ade service restart`   |
+| Stop and remove from startup    | `ade service uninstall` |
 
 Uninstalling the service leaves your projects, threads, and settings intact.
-Running `t3 service install` again repairs a service that `t3 service status`
+Running `ade service install` again repairs a service that `ade service status`
 reports as broken.
 
-`t3 update` downloads the newest release on your channel and switches `t3`
+`ade update` downloads the newest release on your channel and switches `ade`
 and the service to it. Restarting interrupts running agent turns, terminals,
 and remote clients, so it asks first; answer no and the service keeps running
-the old version until you run `t3 service restart`. Pass `--yes` from a
+the old version until you run `ade service restart`. Pass `--yes` from a
 script. A server you started by hand is left running; stop and start it again
 to pick up the new version. Wait for any remote update already in progress
 before updating; to match a remote client's version, follow
-[Updating T3 Code](./updating.md).
+[Updating ADE](./updating.md).
 
-Pass an exact version (`t3 update 0.0.42`) to pin one, `--channel nightly` to
+Pass an exact version (`ade update 0.0.42`) to pin one, `--channel nightly` to
 switch trains, or `--allow-downgrade` to move backwards. `preview` is a
 maintainers' test train: its builds can be broken and are never offered as
-updates, so the installer and `t3 update` ask for confirmation before
+updates, so the installer and `ade update` ask for confirmation before
 installing one.
 
-`t3 uninstall` removes the background service, the `t3` launcher, and the
+`ade uninstall` removes the background service, the `ade` launcher, and the
 downloaded versions after showing you the list and asking once. Your projects,
-threads, and settings under `~/.t3/userdata` are kept. Pass `--yes` from a
+threads, and settings under `~/.ade/userdata` are kept. Pass `--yes` from a
 script.
 
 ## Platform support
 
-Linux needs systemd user services. Setup enables lingering so T3 Code starts at
+Linux needs systemd user services. Setup enables lingering so ADE starts at
 boot and keeps running after logout. If this needs administrator permission,
 setup prints a recovery command before changing the service.
 
@@ -58,7 +60,7 @@ separately. Signing out of T3 Connect does not stop or uninstall the service.
 
 ## Troubleshooting
 
-Start with `t3 service status` on the host. It prints the log path and, on Linux,
+Start with `ade service status` on the host. It prints the log path and, on Linux,
 checks whether the installed service is running, enabled, and allowed to survive
 logout.
 
@@ -76,22 +78,22 @@ ssh -t your-server 'sudo loginctl enable-linger "$(id -un)"'
 ```
 
 Then retry service setup as your normal user. Run only the `loginctl` command
-with sudo; running T3 Code as root creates a separate installation and Connect
-identity. Without administrator access, run `t3 serve` in a terminal and keep
+with sudo; running ADE as root creates a separate installation and Connect
+identity. Without administrator access, run `ade serve` in a terminal and keep
 that session open.
 
 | Status problem                          | Next step                                                                                                                      |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `linger-unavailable`                    | Run `loginctl show-user "$(id -un)" --property=Linger` and check that systemd-logind is available.                             |
 | `user-manager-unavailable`              | Run `systemctl --user status` in a login session for the service user; check your distribution's systemd user-session support. |
-| `service-disabled` or `service-stopped` | Read the log and `systemctl --user status t3code.service`, then use the repair command printed by T3 Code.                     |
-| `restart-pending`                       | A newer version is installed but the service still runs the previous one. Run `t3 service restart`.                            |
+| `service-disabled` or `service-stopped` | Read the log and `systemctl --user status ade.service`, then use the repair command printed by ADE.                            |
+| `restart-pending`                       | A newer version is installed but the service still runs the previous one. Run `ade service restart`.                           |
 
 On macOS, check **System Settings → General → Login Items** if the service no
 longer starts at login. If agent work cannot access Desktop, Documents, or
-Downloads, it may need Full Disk Access for the `t3` executable listed in
+Downloads, it may need Full Disk Access for the executable listed in
 `ProgramArguments` in
-`~/Library/LaunchAgents/com.t3tools.t3code.service.plist`.
+`~/Library/LaunchAgents/com.mijomajic.ade.service.plist`.
 
 For failures after signing in to T3 Connect, see
 [connection troubleshooting](./remote-access.md#t3-connect-troubleshooting).

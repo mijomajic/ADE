@@ -34,7 +34,7 @@ Both commands keep development state in this checkout's ignored `.ade` directory
 - **Readable by default:** locally bundled Geist fonts, neutral light and dark palettes, clearer message surfaces, and account initials that remain legible on custom accent colors.
 - **Honest connection state:** disconnected environments show cached threads as offline instead of counting them as live agent work.
 
-Provider setup and existing workflows are documented in [the user guides](docs/user/install.md). These inherited guides may refer to T3 Code and its releases; use this repository and the source commands above for ADE.
+Provider setup and installation are documented in [the ADE install guide](docs/user/install.md). See [Updating ADE](docs/user/updating.md) when moving to a newer checkout or installer. Some inherited workflow guides still use T3 Code terminology.
 
 ## Building
 

@@ -1,108 +1,84 @@
-# Install T3 Code
+# Install ADE
 
-T3 Code runs coding agents on your computer and lets you control them from its
-desktop, web, or mobile app. Set up the machine where the agents will work first.
+ADE runs coding agents on your computer and lets you work through its desktop
+or web interface. Set up the machine where your agents will run first.
 
-## Requirements
+## Run from source
 
-You need an installed, authenticated provider before starting a thread. You can
-launch T3 Code and configure providers afterwards.
+Install Node.js 24 and pnpm 11.10.0, then run:
 
-## Command line
-
-```bash
-curl -fsSL https://t3.codes/install.sh | sh
+```sh
+git clone https://github.com/mijomajic/ADE.git
+cd ADE
+pnpm install --frozen-lockfile
+pnpm run ade:dev
 ```
 
-On Windows, in PowerShell:
+Open the pairing link printed in the startup log. Development data stays in
+this checkout's `.ade` directory. Keep the terminal running while you use ADE.
 
-```powershell
-irm https://t3.codes/install.ps1 | iex
-```
+For the Electron development app, use `pnpm run ade:desktop` instead. Build its
+native helpers with the platform prerequisites in the
+[development guide](../operations/development.md#desktop-artifacts).
 
-This puts `t3` in `~/.local/bin`. If your shell reports `command not found`
-afterwards, that directory is not on your `PATH` yet; the installer prints the
-line to add. Set `T3CODE_CHANNEL=nightly` to install the nightly train, or
-`T3CODE_VERSION` to pin an exact version.
-
-| Task                                             | Command                                                   |
-| ------------------------------------------------ | --------------------------------------------------------- |
-| Start the server and open the web app            | `t3`                                                      |
-| Start the server without a browser               | `t3 serve`                                                |
-| Keep it running in the background (macOS, Linux) | `t3 service install` ([details](./background-service.md)) |
-| Move to the newest release                       | `t3 update`                                               |
-| Remove it again                                  | `t3 uninstall`                                            |
-
-Run `t3 --help` for the full reference.
-
-To try T3 Code once without installing it, run `npx t3@latest` instead (needs
-Node.js for `npx`).
-
-### Intel Macs
-
-There is no `t3` executable for Intel Macs (the desktop app is available). To
-run a server there, build it from source with Node.js 24 and `vp`
-([Install vp](https://github.com/pingdotgg/t3code#install-vp)):
-
-```bash
-git clone https://github.com/pingdotgg/t3code
-cd t3code && vp i && vp run build:desktop
-node apps/server/dist/bin.mjs
-```
-
-`t3 update` and the background service do not apply to a server run this way;
-update it with `git pull` and a rebuild.
+You can open ADE before installing a provider. Configure one in
+**Settings → Providers** before sending your first agent message.
 
 ## Desktop app
 
-Download a release from [GitHub Releases](https://github.com/pingdotgg/t3code/releases),
-or use a package manager:
+ADE's installers are built from this repository. To build a macOS Apple Silicon
+installer after installing the prerequisites:
 
-| Platform           | Install                            |
-| ------------------ | ---------------------------------- |
-| Windows            | `winget install T3Tools.T3Code`    |
-| macOS              | `brew install --cask t3-code`      |
-| Debian, Ubuntu     | `sudo apt install ./T3-Code-*.deb` |
-| Arch Linux         | `yay -S t3code-bin`                |
-| Arch Linux nightly | `yay -S t3code-nightly-bin`        |
+```sh
+pnpm run dist:desktop:dmg:arm64
+```
 
-The `.deb` updates itself like the other desktop builds. It asks for your
-password to install each update. If your desktop has no password prompt, the
-update fails. Download the new `.deb` and install it the same way.
+The installer is written under `release/`. Open the DMG, copy **ADE (Alpha)** to
+Applications, and launch it. Local builds are not notarized unless you configure
+your own signing credentials. Windows and Linux build commands are in the
+[development guide](../operations/development.md#desktop-artifacts).
+
+This fork does not currently publish releases or package-manager packages.
+T3 Code's Homebrew, winget, npm package, and install scripts install T3 Code.
+Use this checkout or an ADE installer built from it.
+
+Installed ADE keeps its data under `~/.ade` and uses a separate desktop profile.
+It does not import T3 Code's saved threads or settings. An explicit `T3CODE_HOME`
+or server `--base-dir` can select a different data directory.
 
 ### Windows Subsystem for Linux
 
-Choose a WSL distro in **Settings → Connections** to run agents and projects
-there. Install the provider CLIs inside that distro. T3 Code installs its own
-server runtime there automatically; the first launch after an app update can
-take longer.
+In a Windows desktop build with the bundled WSL runtime, choose a distro in
+**Settings → Connections** to run agents and projects there. Install provider
+CLIs inside that distro. Its ADE runtime is separate from a T3 Code install.
 
-### Open a project from a terminal
+## Command line
 
-With the desktop app already running on the same machine:
+After building the server, run it from this checkout:
 
-```bash
-t3 app
+```sh
+pnpm run build:desktop
+node apps/server/dist/bin.mjs serve
 ```
 
-This opens a new thread for the current directory, adding the project if needed.
-Pass a path, such as `t3 app ../my-project`, to open another directory. It requires
-the desktop app, so a standalone server or an SSH session is not enough. If the
-command cannot reach the app, start or update the desktop app and try again.
+Run `node apps/server/dist/bin.mjs --help` for supported commands. Source builds
+are updated with Git and a rebuild; they are not npm installations.
 
-## Mobile app
+A packaged ADE CLI uses the `ade` command. The repository's install scripts and
+`ade update` target ADE releases, which must be published before those paths can
+be used. The standalone CLI's background service is described in
+[Running ADE in the background](./background-service.md).
 
-Install T3 Code from the
-[App Store](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824) or
-[Google Play](https://play.google.com/store/apps/details?id=com.t3tools.t3code).
-The phone connects to a server on another machine. Follow
-[remote access](./remote-access.md) to link it through T3 Connect or a pairing URL.
+## Connect another device
 
-If the app crashes during launch, open Settings → Diagnostics on the next launch
-that succeeds. It lists startup crashes from the last 7 days with the error and
-component stack that store crash reports leave out. Copy the report and paste it
-into a GitHub issue. Error messages can quote values from the app, so read it over
-before sharing.
+On the computer with your code, open **Settings → Connections**, enable network
+access or Tailscale HTTPS, then choose **Create link**. Open the pairing link in
+the other device's browser, or paste it into ADE's pairing form. Keep ADE running
+on the host computer.
+
+The responsive web interface works on phones. This fork does not distribute an
+ADE native mobile app. The inherited mobile source and T3 Connect integration
+require their own build and service configuration.
 
 ## Providers
 
@@ -118,21 +94,21 @@ computer.
 | Cursor      | Install [Cursor CLI](https://cursor.com/cli), then run `agent login`.                        |
 | Grok Build  | Install [Grok Build CLI](https://x.ai/cli), then run `grok login`.                           |
 | OpenCode    | Install [OpenCode](https://opencode.ai), then run `opencode auth login`.                     |
-| Antigravity | Install and sign in with Google from T3 Code's provider settings.                            |
+| Antigravity | Install and sign in with Google from ADE's provider settings.                                |
 
-Provider CLIs must be on the server's `PATH`. If T3 Code cannot find one, set its
+Provider CLIs must be on the server's `PATH`. If ADE cannot find one, set its
 **Binary path** in provider settings, especially when using a version manager.
 Cursor's executable is `cursor-agent`, although its login command is
 `agent login`. Antigravity can use its managed runtime without a `PATH` entry.
 
-T3 Code warns when a provider version has known compatibility problems with your
+ADE warns when a provider version has known compatibility problems with your
 release. Check **Settings → Providers** on that environment for the recommended
 version or range. When its package manager supports installing a specific version,
 you can install the recommendation there. Otherwise use the provider's installer
 on the environment's machine. An unlisted version is unverified.
 
 When a provider CLI is behind its latest release, its provider card shows the
-available version. **Update now** appears only when T3 Code can tell which
+available version. **Update now** appears only when ADE can tell which
 installer owns the CLI (its own update command, Homebrew, or a global npm, pnpm,
 bun, or Vite+ install) and runs that installer. Otherwise update the CLI the same
 way you installed it. Homebrew installs compare against the version Homebrew
@@ -140,7 +116,7 @@ offers, which can trail the npm release by a few hours.
 
 Add another provider instance for a separate account or configuration. Each
 instance can have its own environment variables, such as API keys or a custom
-base URL. Mark secret values as sensitive; after saving, T3 Code does not display
+base URL. Mark secret values as sensitive; after saving, ADE does not display
 their original values.
 
 For provider-specific setup and accounts, see [Codex](./providers-codex.md),
@@ -151,6 +127,5 @@ For provider-specific setup and accounts, see [Codex](./providers-codex.md),
 
 - [Working with threads](./thread-sidebar.md): start tasks and organize parallel work.
 - [Permission modes](./permission-modes.md): choose when agents ask before acting.
-- [Remote access](./remote-access.md): connect from another device.
-- [Running in the background](./background-service.md): keep a Linux or macOS host available.
-- [Updating T3 Code](./updating.md): update the app and connected servers.
+- [Remote access](./remote-access.md): connection modes inherited from T3 Code.
+- [Updating ADE](./updating.md): update your checkout and desktop app.

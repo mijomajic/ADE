@@ -6,6 +6,7 @@ import { MAC_PERMISSION_HELPER_CHANNEL } from "../ipc/channels.ts";
 
 const mocks = vi.hoisted(() => ({
   granted: false,
+  appName: "ADE (Nightly)",
   createFromPath: vi.fn(),
   startDrag: vi.fn(),
   showItemInFolder: vi.fn(),
@@ -61,7 +62,8 @@ vi.mock("electron", async () => {
   }
   return {
     app: {
-      getPath: () => "/Applications/T3 Code (Nightly).app/Contents/MacOS/T3 Code",
+      getPath: () => "/Applications/ADE (Nightly).app/Contents/MacOS/ADE (Nightly)",
+      getName: () => mocks.appName,
     },
     nativeImage: { createFromPath: mocks.createFromPath },
     BrowserWindow: class extends MockWindow {},
@@ -97,6 +99,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
   mocks.granted = false;
+  mocks.appName = "ADE (Nightly)";
   const icon = { toDataURL: () => "data:image/png;base64,abc" };
   mocks.createFromPath.mockReturnValue({ isEmpty: () => false, resize: () => icon });
   mocks.loadURL.mockResolvedValue(undefined);
@@ -138,11 +141,21 @@ it("drags the running app bundle only for the helper's own renderer", async () =
   send("drag");
   expect(mocks.createFromPath).toHaveBeenCalledWith("/bundle/prod-resources/icon.png");
   expect(mocks.startDrag).toHaveBeenCalledWith({
-    file: "/Applications/T3 Code (Nightly).app",
+    file: "/Applications/ADE (Nightly).app",
     icon: mocks.createFromPath.mock.results[0]!.value.resize(),
   });
   send("finder");
-  expect(mocks.showItemInFolder).toHaveBeenCalledWith("/Applications/T3 Code (Nightly).app");
+  expect(mocks.showItemInFolder).toHaveBeenCalledWith("/Applications/ADE (Nightly).app");
+});
+it("identifies the running app in permission instructions and escapes its display name", async () => {
+  mocks.appName = 'ADE <Preview> "Local"';
+  await open();
+  const html = decodeURIComponent(mocks.loadURL.mock.calls[0]![0]);
+  expect(html).toContain("Drag ADE &lt;Preview&gt; &quot;Local&quot; into the list above");
+  expect(html).toContain(
+    'aria-label="Drag ADE &lt;Preview&gt; &quot;Local&quot; to System Settings',
+  );
+  expect(html).not.toContain("T3 Code");
 });
 it("rechecks permissions and releases resources when granted", async () => {
   await open();
@@ -168,7 +181,7 @@ it("does not open for a permission already granted", async () => {
 });
 it("does not show a helper with a missing packaged icon", async () => {
   mocks.createFromPath.mockReturnValueOnce({ isEmpty: () => true });
-  await expect(open()).rejects.toThrow("packaged T3 Code icon is missing");
+  await expect(open()).rejects.toThrow("packaged ADE (Nightly) icon is missing");
   expect(windows).toHaveLength(0);
 });
 it("cleans up when the helper page fails to load", async () => {
@@ -184,7 +197,7 @@ it("offers the Finder fallback when native dragging fails", async () => {
     throw new Error("drag failed");
   });
   send("drag");
-  expect(mocks.showItemInFolder).toHaveBeenCalledWith("/Applications/T3 Code (Nightly).app");
+  expect(mocks.showItemInFolder).toHaveBeenCalledWith("/Applications/ADE (Nightly).app");
   expect(windows[0]!.destroyed).toBe(false);
 });
 

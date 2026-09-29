@@ -195,7 +195,7 @@ export const triageCommand = Command.make("triage", {
             : `v${version}`,
           os: `${yield* HostProcessPlatform} ${yield* HostProcessArchitecture} (${NodeOS.release()})`,
           nodeVersion: process.version,
-          launchedAs: yield* resolveCliCommand("triage"),
+          launchedAs: (yield* resolveCliCommand("triage")) ?? "ADE source entry path unavailable",
           server: yield* describeServerProcess(paths.serverRuntimeStatePath),
           paths: {
             stateDir: paths.stateDir,

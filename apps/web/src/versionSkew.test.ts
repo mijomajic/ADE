@@ -14,6 +14,7 @@ import {
   dismissVersionMismatch,
   isServerUpdateFailureDismissed,
   isVersionMismatchDismissed,
+  manualServerUpdateGuidance,
   resolveServerConfigVersionMismatch,
   resolveServerSelfUpdateCapability,
   resolveVersionMismatch,
@@ -22,11 +23,18 @@ import {
 } from "./versionSkew";
 
 const MISMATCH_HINT =
-  "Version mismatch. Try syncing the client and server to the same T3 Code version.";
+  "Version mismatch. Update the server using its original installation method so it is compatible with this client.";
 
 describe("versionSkew", () => {
   beforeEach(() => {
     branding.APP_VERSION = "0.0.34";
+  });
+
+  it("does not guess an installation command for an unidentified server", () => {
+    const guidance = manualServerUpdateGuidance("0.0.34");
+    expect(guidance).toContain("original installation method");
+    expect(guidance).toContain("Client version: 0.0.34");
+    expect(guidance).not.toMatch(/npx|npm|ade update|t3@/);
   });
 
   it("dismisses only the current failed attempt without clearing its retry state", () => {

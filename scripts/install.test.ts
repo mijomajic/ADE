@@ -8,6 +8,60 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 
+it.skipIf(HostProcessPlatform.defaultValue() === "win32")(
+  "missing ADE releases fail safely without directing users to an upstream install",
+  async () => {
+    const home = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "ade-missing-release-"));
+    const server = NodeHttp.createServer((_request, response) => response.writeHead(404).end());
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Expected a TCP listener");
+    const environment = { ...process.env };
+    delete environment.T3CODE_HOME;
+    await NodeFSP.mkdir(NodePath.join(home, ".t3"));
+    await NodeFSP.writeFile(NodePath.join(home, ".t3/sentinel"), "existing T3 data");
+    try {
+      const child = NodeChildProcess.spawn(
+        "sh",
+        [NodePath.join(import.meta.dirname, "install.sh")],
+        {
+          env: {
+            ...environment,
+            HOME: home,
+            T3CODE_VERSION: "1.2.3",
+            T3CODE_INSTALL_BIN_DIR: NodePath.join(home, "bin"),
+            T3CODE_RELEASE_BASE_URL: `http://127.0.0.1:${address.port}`,
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+      let output = "";
+      child.stdout.on("data", (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+      child.stderr.on("data", (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+      const code = await new Promise<number | null>((resolve, reject) => {
+        child.on("error", reject);
+        child.on("close", resolve);
+      });
+      expect(code).not.toBe(0);
+      expect(output).toContain("ADE 1.2.3 has no release archive");
+      expect(output).toContain("https://github.com/mijomajic/ADE/releases");
+      expect(output).not.toContain("npm install");
+      expect(await NodeFSP.readdir(NodePath.join(home, ".ade/runtime/versions"))).toEqual([]);
+      expect(await NodeFSP.readFile(NodePath.join(home, ".t3/sentinel"), "utf8")).toBe(
+        "existing T3 data",
+      );
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await NodeFSP.rm(home, { recursive: true, force: true });
+    }
+  },
+);
+
 // util-linux's script gives the real installer a terminal without a browser or extra packages.
 describe.skipIf(HostProcessPlatform.defaultValue() !== "linux")("installer terminal", () => {
   it.each([false, true])(

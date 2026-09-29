@@ -56,7 +56,11 @@ describe("remote helper lifecycle", () => {
         const bin = NodePath.join(home, "bin");
         await NodeFSP.mkdir(bin);
         await NodeFSP.writeFile(NodePath.join(bin, "adb"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-        const root = NodePath.join(home, ".t3/device");
+        const root = NodePath.join(home, ".ade/device");
+        const upstreamState = NodePath.join(home, ".t3/device/hosts/one/hub.json");
+        await NodeFSP.mkdir(NodePath.dirname(upstreamState), { recursive: true });
+        const upstreamSentinel = JSON.stringify({ owner: "one", pid: 1, port: 1 });
+        await NodeFSP.writeFile(upstreamState, upstreamSentinel);
         const hubDir = NodePath.join(root, `tools/expo-device-hub@${DEVICE_HUB_VERSION}`);
         const agentDir = NodePath.join(root, `tools/agent-device@${AGENT_DEVICE_VERSION}`);
         const hub = NodePath.join(hubDir, "node_modules/expo-device-hub/dist/server/cli.mjs");
@@ -216,6 +220,7 @@ else { const child=spawn(process.execPath,[path.join(path.dirname(process.argv[1
           ).toBe(String(daemon.pid));
           expect((await fetch(`http://127.0.0.1:${repaired.hubPort}/readyz`)).ok).toBe(true);
           await invoke("one", "stop");
+          expect(await NodeFSP.readFile(upstreamState, "utf8")).toBe(upstreamSentinel);
           expect((await fetch(`http://127.0.0.1:${second.hubPort}/readyz`)).ok).toBe(true);
           expect(
             JSON.parse(await NodeFSP.readFile(NodePath.join(root, "hosts/two/hub.json"), "utf8"))

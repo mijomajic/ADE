@@ -1,25 +1,22 @@
 import { scopedProjectKey, scopeProjectRef } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId } from "@t3tools/contracts";
+import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
 
 import type { Project, ThreadShell } from "../../types";
 import { resolveThreadStatusPill } from "../Sidebar.logic";
 
 export type WorkspaceFilter = "all" | "attention" | "working";
 export type WorkspaceThreadState = {
-  readonly category: WorkspaceFilter | "offline";
+  readonly category: WorkspaceFilter | "offline" | "snoozed";
   readonly label: string;
   readonly tone: "neutral" | "warning" | "success" | "error";
 };
 
-function threadState(thread: ThreadShell, connected: boolean): WorkspaceThreadState {
+function threadState(thread: ThreadShell, connected: boolean, now: string): WorkspaceThreadState {
   // A cached running session is not proof that the remote agent is still working.
   if (!connected) return { category: "offline", label: "Offline", tone: "neutral" };
   const status = resolveThreadStatusPill({ thread });
-  if (
-    status?.label === "Pending Approval" ||
-    status?.label === "Awaiting Input" ||
-    status?.label === "Plan Ready"
-  ) {
+  if (status?.label === "Pending Approval" || status?.label === "Awaiting Input") {
     return { category: "attention", label: status.label, tone: "warning" };
   }
   if (
@@ -28,6 +25,17 @@ function threadState(thread: ThreadShell, connected: boolean): WorkspaceThreadSt
     status?.label === "Monitoring"
   ) {
     return { category: "working", label: status.label, tone: "success" };
+  }
+  if (effectiveSnoozed(thread, { now })) {
+    return { category: "snoozed", label: "Snoozed", tone: "neutral" };
+  }
+  // Settling acknowledges existing failures and plans without deleting them.
+  // Fresh requests and live work still take priority during snapshot transitions.
+  if (thread.settledOverride === "settled") {
+    return { category: "all", label: "Done", tone: "neutral" };
+  }
+  if (status?.label === "Plan Ready") {
+    return { category: "attention", label: status.label, tone: "warning" };
   }
   if (thread.session?.status === "error" || thread.latestTurn?.state === "error") {
     return { category: "attention", label: "Needs review", tone: "error" };
@@ -45,6 +53,7 @@ export function buildWorkspaceOverview(
   projects: readonly Project[],
   threads: readonly ThreadShell[],
   connectedEnvironmentIds: ReadonlySet<EnvironmentId>,
+  now: string,
 ) {
   const projectByKey = new Map(
     projects.map((project) => [
@@ -64,14 +73,19 @@ export function buildWorkspaceOverview(
           thread,
           project,
           projectKey,
-          state: threadState(thread, connectedEnvironmentIds.has(thread.environmentId)),
+          state: threadState(thread, connectedEnvironmentIds.has(thread.environmentId), now),
         },
       ];
     })
     .sort((a, b) => b.thread.updatedAt.localeCompare(a.thread.updatedAt));
 
   const projectActivity = new Map<string, { count: number; latestAt: string }>();
+  let nextSnoozeWakeAt: number | null = null;
   for (const row of rows) {
+    if (row.state.category === "snoozed" && row.thread.snoozedUntil != null) {
+      const wakeAt = Date.parse(row.thread.snoozedUntil);
+      nextSnoozeWakeAt = Math.min(nextSnoozeWakeAt ?? wakeAt, wakeAt);
+    }
     const current = projectActivity.get(row.projectKey);
     projectActivity.set(row.projectKey, {
       count: (current?.count ?? 0) + 1,
@@ -81,6 +95,7 @@ export function buildWorkspaceOverview(
 
   return {
     rows,
+    nextSnoozeWakeAt,
     projects: projects
       .map((project) => {
         const key = scopedProjectKey(scopeProjectRef(project.environmentId, project.id));

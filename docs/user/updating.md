@@ -1,77 +1,53 @@
-# Updating T3 Code
+# Updating ADE
 
-The app you use and the server running your agents can be on different machines.
-When a server is behind your web or desktop app, an update notice appears in the
-conversation and **Settings → Connections**. Update the machine named in that
-notice.
+Update ADE from the same repository or installer you used to set it up. This
+fork does not currently publish a desktop update feed or standalone CLI releases.
+T3 Code's npm package and releases install the upstream application.
 
-## Before you update
+## Source checkout
 
-Server updates restart the connection and can interrupt active agents and
-terminal commands. Saved threads, settings, and project files remain.
-
-**Settings → General → Continue threads after restarts** is off by default.
-Enable it to resume supported active threads after an update, crash, or machine
-restart. Changes are saved to connected environments that support this setting;
-update older servers first. If a supported environment was offline or has a
-different value, use **Apply to all** in Settings after it connects.
-T3 Code must start again on that machine;
-the setting does not enable automatic startup. Terminal commands may still be
-interrupted, and threads without saved provider resume state need a new message.
-If you previously enabled continuation for updates, enable this setting once
-to allow recovery without a connected client.
-
-## Update a connected server
-
-The offered action depends on how the server runs:
-
-| Action                     | What to do                                                                                                                                                                                      |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Update server**          | Keep the client open while it installs and reconnects. Supported background services update remotely. For a desktop-hosted server, this also closes and relaunches the desktop app on the host. |
-| **Update the desktop app** | Update the desktop app on the machine running the server, then reopen it if needed.                                                                                                             |
-| **Copy update command**    | Stop the command-line server on its host and relaunch with the copied command, keeping your usual startup options.                                                                              |
-
-On the host, run:
+Stop the development process you started, then run these commands in your ADE
+checkout:
 
 ```sh
-t3 update <client-version>
+git pull --ff-only origin main
+pnpm install --frozen-lockfile
+pnpm run ade:dev
 ```
 
-Replace `<client-version>` with the version shown in the notice. The command
-asks before restarting the background service; if you decline, run
-`t3 service restart` when you are ready. For a server you started by hand,
-stop it and start it again afterwards with your usual options such as `--host`
-or `--tailscale-serve`.
+Use `pnpm run ade:desktop` for the Electron development app. If Git reports local
+changes or a diverged branch, preserve your changes and resolve that before
+updating. A source server started from `apps/server/dist/bin.mjs` also needs
+`pnpm run build:desktop` before restarting it.
 
-If you run the server with `npx` rather than an installed `t3`, there is
-nothing to update on the host: stop the server and relaunch it as
-`npx t3@<client-version>` with the same subcommand and options.
+## Packaged desktop app
 
-## If an update fails
+Build a new ADE installer from the updated checkout, quit ADE, and replace the
+installed application. Your data remains in `~/.ade`; do not delete it when
+replacing the app. See [Install ADE](./install.md#desktop-app).
 
-Keep the client open until it reconnects or reports a failure. A failed service
-update can roll back to the previous version. If the update still fails:
+Automatic desktop updates are disabled until an ADE release feed is explicitly
+configured. A future packaged CLI can use `ade update` once this repository has
+matching releases.
 
-1. Retry the offered action once.
-2. Check that you updated the server's machine, not only the device you are using.
-3. For a command-line server, stop it and relaunch the exact version shown in the notice.
+## Connected environments
 
-## Mobile updates
+The interface and the server running your agents can be on different machines.
+A version notice names the environment that needs updating. Use that machine's
+original ADE installation method. Remote update controls are available only when
+the server advertises support for them.
 
-To update an environment from your phone, open **Settings → Environments** and
-select it. **Check for updates** finds the latest release on that environment's
-current release channel. Keep the app open while the environment updates and
-reconnects. Hosts that cannot update remotely show instructions for updating on
-the machine instead.
+Restarting a server interrupts its connections and may interrupt agent turns and
+terminal commands. Saved threads, settings, and project files remain.
+**Settings → General → Continue threads after restarts** can resume supported
+threads once ADE starts again; it does not enable automatic startup.
 
-The same page lets you refresh provider status and update supported providers.
-These controls require a connected environment and permission to operate it.
-Provider update checks and restart continuation preferences are in
-**Settings → Maintenance**. If provider update checks are disabled, enable them
-there before refreshing to find newer versions.
+When connecting ADE to an existing T3 Code server, update that server through its
+own installation. Client compatibility does not change which application owns
+the server or its data.
 
-Install App Store or Google Play releases as usual. The mobile app can also
-download updates in the background and apply them when you next leave the app.
-It saves drafts and queued messages before restarting. If you keep the app open
-for a long time, it may ask to install immediately; choosing **Later** leaves the
-update queued for the next suitable moment.
+## Provider updates
+
+Agent CLI versions are separate from ADE's version. Check **Settings → Providers**
+on the environment where the agents run. Use the provider's offered update action
+or its original installer.

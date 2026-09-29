@@ -1,18 +1,19 @@
 import * as NodeOS from "node:os";
-import * as NodePath from "node:path";
 import * as NodePathService from "@effect/platform-node/NodePath";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as Path from "effect/Path";
 
 import { hydratePosixHome, resolveBaseDir } from "./os-jank.ts";
 
 it.effect("keeps ADE's default state separate from T3 Code", () =>
   Effect.gen(function* () {
+    const path = yield* Path.Path;
     for (const input of [undefined, "", "  "]) {
       const resolved = yield* resolveBaseDir(input).pipe(Effect.provide(NodePathService.layer));
-      assert.equal(resolved, NodePath.join(NodeOS.homedir(), ".ade"));
+      assert.equal(resolved, path.join(NodeOS.homedir(), ".ade"));
     }
-  }),
+  }).pipe(Effect.provide(NodePathService.layer)),
 );
 
 it.effect("preserves an explicit server data directory", () =>

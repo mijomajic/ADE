@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Feature request
-    url: https://github.com/pingdotgg/t3code/discussions/categories/ideas
-    about: Suggest an improvement or new capability in Discussions.
+  - name: ADE contribution and reporting guidance
+    url: https://github.com/mijomajic/ADE/blob/main/CONTRIBUTING.md#reporting-ade-problems
+    about: Read the reporting and contribution guidance for this independent fork.

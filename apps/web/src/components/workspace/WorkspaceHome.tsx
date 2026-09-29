@@ -18,11 +18,12 @@ import {
   SearchIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { openCommandPalette } from "../../commandPaletteBus";
 import { isElectron } from "../../env";
 import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import { cn } from "../../lib/utils";
 import {
   useAllEnvironmentShellsBootstrapped,
@@ -65,6 +66,12 @@ export function WorkspaceHome() {
   const [startingProject, setStartingProject] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const startingRef = useRef(false);
+  const nowMinute = useNowMinute();
+  const [snoozeWakeTick, bumpSnoozeWakeTick] = useState(0);
+  const environmentById = useMemo(
+    () => new Map(environments.map((environment) => [environment.environmentId, environment])),
+    [environments],
+  );
   const connectedIds = useMemo(
     () =>
       new Set(
@@ -74,14 +81,27 @@ export function WorkspaceHome() {
       ),
     [environments],
   );
-  const overview = useMemo(
-    () => buildWorkspaceOverview(projects, threads, connectedIds),
-    [projects, threads, connectedIds],
-  );
+  const overview = useMemo(() => {
+    // Minute ticks recover from suspended tabs; the wake timer handles precise deadlines.
+    void nowMinute;
+    void snoozeWakeTick;
+    return buildWorkspaceOverview(projects, threads, connectedIds, new Date().toISOString());
+    // oxlint-disable-next-line react/memo-dependencies -- Clock signals invalidate time-derived snooze states without a server event.
+  }, [projects, threads, connectedIds, nowMinute, snoozeWakeTick]);
+  useEffect(() => {
+    if (overview.nextSnoozeWakeAt === null) return;
+    // Clamp long snoozes to avoid overflowing the browser's signed 32-bit timer.
+    const delay = Math.min(Math.max(0, overview.nextSnoozeWakeAt - Date.now()) + 50, 2_147_483_647);
+    const timer = window.setTimeout(() => bumpSnoozeWakeTick((tick) => tick + 1), delay);
+    return () => window.clearTimeout(timer);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A clamped far-future wake must re-arm even when the deadline is unchanged.
+  }, [overview.nextSnoozeWakeAt, snoozeWakeTick]);
   const filteredRows = useMemo(
     () => filterWorkspaceThreads(overview.rows, query, filter),
     [overview.rows, query, filter],
   );
+  const hasLoadedWork = projects.length > 0 || overview.rows.length > 0;
+  const allEnvironmentsOffline = environments.length > 0 && connectedIds.size === 0;
   const providerCount = useMemo(
     () =>
       environments.reduce(
@@ -219,11 +239,19 @@ export function WorkspaceHome() {
                     value === "attention" && count > 0 && "text-warning-foreground",
                   )}
                 >
-                  {bootstrapped ? count.toString().padStart(2, "0") : "—"}
+                  {bootstrapped || overview.rows.length > 0
+                    ? count.toString().padStart(2, "0")
+                    : "—"}
                 </span>
               </button>
             ))}
           </section>
+
+          {!bootstrapped && hasLoadedWork ? (
+            <p role="status" className="mt-3 text-xs text-muted-foreground">
+              Showing available work while other environments connect.
+            </p>
+          ) : null}
 
           {startError ? (
             <div
@@ -252,8 +280,22 @@ export function WorkspaceHome() {
                 </Button>
               ) : null}
             </div>
-            {!bootstrapped ? (
+            {!bootstrapped && projects.length === 0 ? (
               <WorkspaceSkeleton />
+            ) : projects.length === 0 && allEnvironmentsOffline ? (
+              <div className="rounded-lg border border-border px-6 py-10 sm:px-10">
+                <MonitorIcon className="mb-5 size-6 text-muted-foreground" aria-hidden="true" />
+                <h3 className="text-lg font-medium tracking-tight">Reconnect to your work.</h3>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Your environments are offline. Reconnect a machine to load its projects and
+                  threads.
+                </p>
+                <div className="mt-6">
+                  <Button render={<Link to="/settings/connections" />}>
+                    Open Connections <ArrowRightIcon />
+                  </Button>
+                </div>
+              </div>
             ) : projects.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border px-6 py-10 sm:px-10">
                 <FolderCodeIcon className="mb-5 size-6 text-muted-foreground" aria-hidden="true" />
@@ -276,10 +318,12 @@ export function WorkspaceHome() {
                 {overview.projects
                   .slice(0, showAllProjects ? undefined : 4)
                   .map(({ project, key, threadCount }) => {
-                    const environment = environments.find(
-                      (candidate) => candidate.environmentId === project.environmentId,
-                    );
+                    const environment = environmentById.get(project.environmentId);
                     const connected = connectedIds.has(project.environmentId);
+                    const projectLabel =
+                      environments.length > 1
+                        ? `${project.title} on ${environment?.label ?? "an unavailable environment"}`
+                        : project.title;
                     return (
                       <Tooltip key={key}>
                         <TooltipTrigger
@@ -295,8 +339,8 @@ export function WorkspaceHome() {
                               }}
                               aria-label={
                                 connected
-                                  ? `Start a thread in ${project.title}`
-                                  : `${project.title} is offline. Reconnect in Connections to start a thread.`
+                                  ? `Start a thread in ${projectLabel}`
+                                  : `${projectLabel} is offline. Reconnect in Connections to start a thread.`
                               }
                               className="group min-w-0 rounded-lg border border-border bg-card p-5 text-left outline-none transition-colors hover:border-muted-foreground/50 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                             />
@@ -386,7 +430,7 @@ export function WorkspaceHome() {
                 </Button>
               ))}
             </div>
-            {!bootstrapped ? (
+            {!bootstrapped && overview.rows.length === 0 ? (
               <WorkspaceSkeleton />
             ) : filteredRows.length === 0 ? (
               <div className="flex flex-col items-center rounded-lg border border-border px-6 py-10 text-center">
@@ -396,20 +440,28 @@ export function WorkspaceHome() {
                   <SearchIcon className="mb-3 size-5 text-muted-foreground" aria-hidden="true" />
                 )}
                 <h3 className="text-sm font-medium">
-                  {query.trim()
-                    ? "No matching threads"
-                    : filter === "attention"
-                      ? "Nothing needs your attention"
-                      : filter === "working"
-                        ? "No agents working right now"
-                        : "Your next idea starts here"}
+                  {!bootstrapped
+                    ? "No matching threads loaded yet"
+                    : allEnvironmentsOffline && overview.rows.length === 0
+                      ? "No threads loaded"
+                      : query.trim()
+                        ? "No matching threads"
+                        : filter === "attention"
+                          ? "Nothing needs your attention"
+                          : filter === "working"
+                            ? "No agents working right now"
+                            : "Your next idea starts here"}
                 </h3>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  {query.trim()
-                    ? "Try a different title, project, or branch."
-                    : filter === "all"
-                      ? "Start a thread in a project to begin."
-                      : "New activity will appear here as your agents work."}
+                  {!bootstrapped
+                    ? "More work may appear when all environments finish connecting."
+                    : allEnvironmentsOffline && overview.rows.length === 0
+                      ? "Reconnect a machine to see its recent work."
+                      : query.trim()
+                        ? "Try a different title, project, or branch."
+                        : filter === "all"
+                          ? "Start a thread in a project to begin."
+                          : "New activity will appear here as your agents work."}
                 </p>
                 {query || filter !== "all" ? (
                   <div className="mt-4">
@@ -446,7 +498,12 @@ export function WorkspaceHome() {
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium">{thread.title}</span>
                           <span className="mt-1.5 flex min-w-0 items-center gap-2 text-2xs text-muted-foreground">
-                            <span className="truncate">{project.title}</span>
+                            <span className="truncate">
+                              {project.title}
+                              {environments.length > 1
+                                ? ` · ${environmentById.get(thread.environmentId)?.label ?? "Unavailable environment"}`
+                                : null}
+                            </span>
                             {thread.branch ? (
                               <>
                                 <span aria-hidden="true">/</span>
